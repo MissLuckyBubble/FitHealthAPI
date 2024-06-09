@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.services;
 
+import fit.health.fithealthapi.exceptions.CustomException;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.User;
 import org.semanticweb.HermiT.Reasoner;
@@ -63,11 +64,9 @@ public class OntologyService {
     private void loadDietaryPreferences() {
         OWLClass dietaryPreferenceClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "DietaryPreference"));
         Set<OWLClass> dietaryPreferences = reasoner.getSubClasses(dietaryPreferenceClass, false).getFlattened();
-        LOGGER.info("Loading dietary preferences...");
         for (OWLClass dietaryPreference : dietaryPreferences) {
             String shortForm = dietaryPreference.getIRI().toString();
             dietaryPreferencesMap.put(dietaryPreference, shortForm);
-            LOGGER.info("Loaded dietary preference: " + shortForm);
         }
     }
 
@@ -170,8 +169,14 @@ public class OntologyService {
     }
 
     public void createFoodItem(FoodItem foodItem) {
+
+
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItem.getFoodName().replace(" ", "_")));
+        if (ontology.containsIndividualInSignature(foodIndividual.getIRI())) {
+            throw new CustomException("Food item already exists");
+        }
         OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
+
 
         OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(foodItemClass, foodIndividual);
         ontoManager.addAxiom(ontology, classAssertion);
@@ -309,7 +314,12 @@ public class OntologyService {
 
     public void createUser(User user) {
         OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername().replace(" ", "_")));
+        if (ontology.containsIndividualInSignature(userIndividual.getIRI())) {
+            throw new CustomException("User already exists!");
+        }
+
         OWLClass userClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "User"));
+
 
         OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(userClass, userIndividual);
         ontoManager.addAxiom(ontology, classAssertion);
@@ -361,8 +371,15 @@ public class OntologyService {
     }
 
 
-    public void editUser(User user) {
+    public void editUser(User user, String oldPassword) {
         OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername()));
+
+        String storedPassword = getDataPropertyValue(userIndividual, "password");
+
+        // Validate the old password
+        if (storedPassword == null || !passwordEncoder.matches(oldPassword, storedPassword)) {
+            throw new RuntimeException("Invalid old password");
+        }
 
         LOGGER.info(user.getUsername());
         // Remove existing data properties
