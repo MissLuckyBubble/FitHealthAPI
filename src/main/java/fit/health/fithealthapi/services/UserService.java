@@ -1,114 +1,153 @@
 package fit.health.fithealthapi.services;
 
+import fit.health.fithealthapi.exceptions.CustomException;
 import fit.health.fithealthapi.model.User;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLAxiom;
-import org.semanticweb.owlapi.model.OWLClass;
-import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import lombok.Getter;
+import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.util.OWLEntityRemover;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.logging.Logger;
+import java.util.Collections;
 
 @Service
 public class UserService {
-/*
-    private static final Logger LOGGER = Logger.getLogger(UserService.class.getName());
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final OntologyService ontologyService;
 
-    public UserService(OntologyService ontologyService) {
+    @Autowired
+    DataPropertyService dataPropertyService;
+    @Autowired
+    ObjectPropertyService objectPropertyService;
+    @Autowired
+    OntologyService ontologyService;
+
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private OWLOntologyManager ontoManager;
+    private OWLDataFactory dataFactory;
+    private OWLOntology ontology;
+    private String ontologyIRIStr;
+
+
+    public UserService(DataPropertyService dataPropertyService, ObjectPropertyService objectPropertyService, OntologyService ontologyService) {
+        this.dataPropertyService = dataPropertyService;
+        this.objectPropertyService = objectPropertyService;
         this.ontologyService = ontologyService;
+
+        init();
     }
 
+    private void init(){
+        ontoManager = ontologyService.getOntoManager();
+        dataFactory = ontologyService.getDataFactory();
+        ontology = ontologyService.getOntology();
+        ontologyIRIStr = ontologyService.getOntologyIRIStr();
+    }
+
+
     public void createUser(User user) {
-        OWLNamedIndividual userIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + user.getUsername().replace(" ", "_")));
-        OWLClass userClass = ontologyService.getDataFactory().getOWLClass(IRI.create(ontologyService.getOntologyIRIStr() + "User"));
+        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername().replace(" ", "_")));
+        if (ontology.containsIndividualInSignature(userIndividual.getIRI())) {
+            throw new CustomException("User already exists!");
+        }
 
-        OWLAxiom classAssertion = ontologyService.getDataFactory().getOWLClassAssertionAxiom(userClass, userIndividual);
-        ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), classAssertion);
+        OWLClass userClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "User"));
 
-        ontologyService.addDataProperty(userIndividual, "username", user.getUsername());
+
+        OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(userClass, userIndividual);
+        ontoManager.addAxiom(ontology, classAssertion);
+
+        dataPropertyService.addDataProperty(userIndividual, "username", user.getUsername());
 
         // Encrypt the password before saving
         String encodedPassword = passwordEncoder.encode(user.getPassword());
-        ontologyService.addDataProperty(userIndividual, "password", encodedPassword);
+        dataPropertyService.addDataProperty(userIndividual, "password", encodedPassword);
 
-        ontologyService.addDataProperty(userIndividual, "birthDate", user.getBirthDate());
-        ontologyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
-        ontologyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
-        ontologyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
+        dataPropertyService.addDataProperty(userIndividual, "birthDate", user.getBirthDate());
+        dataPropertyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
+        dataPropertyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
+        dataPropertyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
 
         // Add object property assertions for dietary preferences
-        ontologyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
+        objectPropertyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
 
         // Add object property assertions for health conditions
-        ontologyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
+        objectPropertyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
 
         ontologyService.saveOntology();
     }
 
     public User loginUser(String username, String password) {
-        OWLNamedIndividual userIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + username));
+        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username));
 
-        String storedPassword = ontologyService.getDataPropertyValue(userIndividual, "password");
+        String storedPassword = dataPropertyService.getDataPropertyValue(userIndividual, "password");
 
         if (storedPassword != null && passwordEncoder.matches(password, storedPassword)) {
             return getUser(userIndividual);
         } else {
-            throw new RuntimeException("Invalid username or password");
+            throw new CustomException("Invalid username or password");
         }
     }
 
     private User getUser(OWLNamedIndividual individual) {
         User user = new User();
         user.setId(individual.getIRI().toString());
-        user.setUsername(ontologyService.getDataPropertyValue(individual, "username"));
-        user.setPassword(ontologyService.getDataPropertyValue(individual, "password")); // This would be encrypted
-        user.setBirthDate(ontologyService.getDataPropertyValue(individual, "birthDate"));
-        user.setWeightKG(ontologyService.getFloatValue(individual, "weightKG"));
-        user.setGoalWeight(ontologyService.getFloatValue(individual, "goalWeight"));
-        user.setHeightCM(ontologyService.getFloatValue(individual, "heightCM"));
-        user.setDietaryPreferences(ontologyService.getObjectPropertyValues(individual, "userHasDietaryPreference"));
-        user.setHealthConditions(ontologyService.getObjectPropertyValues(individual, "userHasHealthCondition"));
+        user.setUsername(dataPropertyService.getDataPropertyValue(individual, "username"));
+        user.setPassword(dataPropertyService.getDataPropertyValue(individual, "password")); // This would be encrypted
+        user.setBirthDate(dataPropertyService.getDataPropertyValue(individual, "birthDate"));
+        user.setWeightKG(dataPropertyService.getFloatValue(individual, "weightKG"));
+        user.setGoalWeight(dataPropertyService.getFloatValue(individual, "goalWeight"));
+        user.setHeightCM(dataPropertyService.getFloatValue(individual, "heightCM"));
+        user.setDietaryPreferences(objectPropertyService.getObjectPropertyValues(individual, "userHasDietaryPreference"));
+        user.setHealthConditions(objectPropertyService.getObjectPropertyValues(individual, "userHasHealthCondition"));
         return user;
     }
 
-    public void editUser(User user) {
-        OWLNamedIndividual userIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + user.getUsername()));
 
-        LOGGER.info(user.getUsername());
+    public void editUser(User user, String oldPassword) {
+        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername()));
+
+        String storedPassword = dataPropertyService.getDataPropertyValue(userIndividual, "password");
+
+        // Validate the old password
+        if (storedPassword == null || !passwordEncoder.matches(oldPassword, storedPassword)) {
+            throw new CustomException("Invalid old password");
+        }
+
         // Remove existing data properties
-        ontologyService.removeDataProperties(userIndividual, "weightKG");
-        ontologyService.removeDataProperties(userIndividual, "goalWeight");
-        ontologyService.removeDataProperties(userIndividual, "heightCM");
-        ontologyService.removeDataProperties(userIndividual, "password");
+        dataPropertyService.removeDataProperties(userIndividual, "weightKG");
+        dataPropertyService.removeDataProperties(userIndividual, "goalWeight");
+        dataPropertyService.removeDataProperties(userIndividual, "heightCM");
+        dataPropertyService.removeDataProperties(userIndividual, "password");
+
 
         // Add new data properties
-        ontologyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
-        ontologyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
-        ontologyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
+        dataPropertyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
+        dataPropertyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
+        dataPropertyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
         String encodedPassword = passwordEncoder.encode(user.getPassword());
-        ontologyService.addDataProperty(userIndividual, "password", encodedPassword);
+        dataPropertyService.addDataProperty(userIndividual, "password", encodedPassword);
+
 
         // Remove existing object properties
-        ontologyService.removeObjectProperties(userIndividual, "userHasDietaryPreference");
-        ontologyService.removeObjectProperties(userIndividual, "userHasHealthCondition");
+        objectPropertyService.removeObjectProperties(userIndividual, "userHasDietaryPreference");
+        objectPropertyService.removeObjectProperties(userIndividual, "userHasHealthCondition");
 
         // Add new object properties
-        ontologyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
-        ontologyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
+        objectPropertyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
+        objectPropertyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
 
         ontologyService.saveOntology();
     }
 
     public void removeUser(String userId) {
-        OWLNamedIndividual userIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + userId));
-        OWLEntityRemover remover = new OWLEntityRemover(ontologyService.getOntoManager(), Collections.singleton(ontologyService.getOntology()));
+        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + userId));
+        OWLEntityRemover remover = new OWLEntityRemover(ontoManager, Collections.singleton(ontology));
         userIndividual.accept(remover);
-        ontologyService.getOntoManager().applyChanges(remover.getChanges());
+        ontoManager.applyChanges(remover.getChanges());
 
         ontologyService.saveOntology();
-    }*/
+    }
+
 }
