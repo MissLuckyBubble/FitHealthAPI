@@ -45,11 +45,21 @@ public class DataPropertyService {
   }
 
 
+  public void addDataProperty(OWLNamedIndividual individual, String propertyName, int value) {
+    OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
+    OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
+    ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), axiom);
+  }
+
   public float getFloatValue(OWLNamedIndividual individual, String propertyName) {
     String value = getDataPropertyValue(individual, propertyName);
     return value == null ? 0 : Float.parseFloat(value);
   }
 
+  public int getIntValue(OWLNamedIndividual individual, String propertyName) {
+    String value = getDataPropertyValue(individual, propertyName);
+    return value == null ? 0 : Integer.parseInt(value);
+  }
 
   public void removeDataProperties(OWLNamedIndividual individual, String propertyName) {
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
