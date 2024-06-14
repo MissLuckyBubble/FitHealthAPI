@@ -7,7 +7,9 @@ public class UserAgent extends Agent {
     @Override
     protected void setup() {
         System.out.println("User Agent " + getLocalName() + " started.");
+        doDelete();
     }
+
 
     @Override
     protected void takeDown() {

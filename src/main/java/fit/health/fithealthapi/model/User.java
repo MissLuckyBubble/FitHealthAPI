@@ -19,6 +19,8 @@ public class User {
     private float weightKG;
     private float goalWeight;
     private float heightCM;
+    private float dailyCalorieGoal;
+    private String gender;
     private List<String> dietaryPreferences;
     private List<String> healthConditions;
 }

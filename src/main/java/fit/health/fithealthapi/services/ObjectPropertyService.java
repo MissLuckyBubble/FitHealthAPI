@@ -26,7 +26,7 @@ public class ObjectPropertyService {
         OWLObjectProperty property = ontologyService.getDataFactory().getOWLObjectProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
         Set<OWLIndividual> individuals = individual.getObjectPropertyValues(property, ontologyService.getOntology());
         return individuals.stream()
-                .map(ind -> ind.asOWLNamedIndividual().getIRI().toString())
+                .map(ind -> ontologyService.getFragment(ind.asOWLNamedIndividual().getIRI().toString()))
                 .collect(Collectors.toList());
     }
 
