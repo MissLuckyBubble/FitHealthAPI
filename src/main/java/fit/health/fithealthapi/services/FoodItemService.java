@@ -5,11 +5,10 @@ import fit.health.fithealthapi.model.FoodItem;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.util.OWLEntityRemover;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,13 +20,11 @@ public class FoodItemService {
     @Autowired
     OntologyService ontologyService;
 
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private OWLOntologyManager ontoManager;
     private OWLDataFactory dataFactory;
     private OWLOntology ontology;
     private String ontologyIRIStr;
-
 
     public FoodItemService(DataPropertyService dataPropertyService, ObjectPropertyService objectPropertyService, OntologyService ontologyService) {
         this.dataPropertyService = dataPropertyService;
@@ -37,74 +34,61 @@ public class FoodItemService {
         init();
     }
 
-    private void init(){
+    private void init() {
         ontoManager = ontologyService.getOntoManager();
         dataFactory = ontologyService.getDataFactory();
         ontology = ontologyService.getOntology();
         ontologyIRIStr = ontologyService.getOntologyIRIStr();
     }
 
-
     public List<FoodItem> getFoodItems() {
-        List<FoodItem> foodItems = new ArrayList<>();
+        ConcurrentLinkedQueue<FoodItem> foodItems = new ConcurrentLinkedQueue<>();
         OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
         Set<OWLNamedIndividual> individuals = ontology.getIndividualsInSignature();
 
-        for (OWLNamedIndividual individual : individuals) {
+        individuals.parallelStream().forEach(individual -> {
             if (ontology.getClassAssertionAxioms(individual).stream()
                     .anyMatch(axiom -> axiom.getClassesInSignature().contains(foodItemClass))) {
                 getFoodItem(foodItems, individual);
             }
-        }
-        return foodItems;
+        });
+
+        return new ArrayList<>(foodItems);
     }
 
     public List<FoodItem> getFoodItemsByPreference(String preference) {
-        List<FoodItem> foodItems = new ArrayList<>();
+        ConcurrentLinkedQueue<FoodItem> foodItems = new ConcurrentLinkedQueue<>();
         OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
         OWLClass preferenceClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + preference));
         Set<OWLNamedIndividual> individuals = ontology.getIndividualsInSignature();
 
-
-        for (OWLNamedIndividual individual : individuals) {
+        individuals.parallelStream().forEach(individual -> {
             if (ontology.getClassAssertionAxioms(individual).stream()
                     .anyMatch(axiom -> axiom.getClassesInSignature().contains(foodItemClass))) {
-                if (ontologyService.getReasoner().getTypes(individual, false).containsEntity(preferenceClass)) {
+                if (ontologyService.isIndividualOfClass(individual, preferenceClass)) {
                     getFoodItem(foodItems, individual);
                 }
             }
-        }
-        return foodItems;
+        });
+
+        return new ArrayList<>(foodItems);
     }
 
     public List<FoodItem> getFoodItemsByPreferences(List<String> preferences) {
-        List<FoodItem> foodItems = new ArrayList<>();
-        OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
-        Set<OWLNamedIndividual> individuals = ontology.getIndividualsInSignature();
+        List<FoodItem> allFoodItems = getFoodItems();
 
-
-        List<OWLClass> preferenceClasses = preferences.stream()
-                .map(pref -> dataFactory.getOWLClass(IRI.create(ontologyIRIStr + pref)))
+        return allFoodItems.stream()
+                .filter(foodItem -> {
+                    List<String> dietaryPreferences = foodItem.getDietaryPreferences();
+                    return preferences.stream().allMatch(dietaryPreferences::contains);
+                })
                 .collect(Collectors.toList());
-
-        for (OWLNamedIndividual individual : individuals) {
-            if (ontology.getClassAssertionAxioms(individual).stream()
-                    .anyMatch(axiom -> axiom.getClassesInSignature().contains(foodItemClass))) {
-
-                // Check if the individual matches all preference classes
-                boolean matchesAllPreferences = preferenceClasses.stream()
-                        .allMatch(preferenceClass -> ontologyService.getReasoner().getTypes(individual, false).containsEntity(preferenceClass));
-
-                if (matchesAllPreferences) {
-                    getFoodItem(foodItems, individual);
-                }
-            }
-        }
-        return foodItems;
     }
 
 
-    private void getFoodItem(List<FoodItem> foodItems, OWLNamedIndividual individual) {
+
+
+    private synchronized void getFoodItem(ConcurrentLinkedQueue<FoodItem> foodItems, OWLNamedIndividual individual) {
         FoodItem foodItem = new FoodItem();
         foodItem.setId(individual.getIRI().toString());
         String foodName = dataPropertyService.getDataPropertyValue(individual, "foodName"); // Retrieve foodName from data property
@@ -118,7 +102,7 @@ public class FoodItemService {
         foodItems.add(foodItem);
     }
 
-    private List<String> getDietaryPreferences(OWLNamedIndividual individual) {
+    private synchronized List<String> getDietaryPreferences(OWLNamedIndividual individual) {
         List<String> preferences = new ArrayList<>();
         for (Map.Entry<OWLClass, String> entry : ontologyService.getDietaryPreferencesMap().entrySet()) {
             if (ontologyService.isIndividualOfClass(individual, entry.getKey())) {
@@ -129,14 +113,11 @@ public class FoodItemService {
     }
 
     public void createFoodItem(FoodItem foodItem) {
-
-
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItem.getFoodName().replace(" ", "_")));
         if (ontology.containsIndividualInSignature(foodIndividual.getIRI())) {
             throw new CustomException("Food item already exists");
         }
         OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
-
 
         OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(foodItemClass, foodIndividual);
         ontoManager.addAxiom(ontology, classAssertion);
@@ -147,15 +128,11 @@ public class FoodItemService {
         dataPropertyService.addDataProperty(foodIndividual, "proteinContent", foodItem.getProteinContent());
         dataPropertyService.addDataProperty(foodIndividual, "sugarContent", foodItem.getSugarContent());
 
-
-
         // Add object property assertions for allergens
         objectPropertyService.addObjectProperties(foodIndividual, "hasAllergen", foodItem.getAllergens());
 
         ontologyService.saveOntology();
     }
-
-
 
     public void editFoodItem(FoodItem foodItem) {
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItem.getId()));
@@ -190,13 +167,9 @@ public class FoodItemService {
         ontologyService.saveOntology();
     }
 
-
     private List<String> getAllergens(OWLNamedIndividual individual) {
         return objectPropertyService.getObjectPropertyValues(individual, "hasAllergen").stream()
-                .map(o-> ontologyService.getFragment(o))
+                .map(o -> ontologyService.getFragment(o))
                 .collect(Collectors.toList());
     }
-
-
-
 }

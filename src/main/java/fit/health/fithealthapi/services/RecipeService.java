@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +28,9 @@ public class RecipeService {
     private OWLDataFactory dataFactory;
     private OWLOntology ontology;
     private String ontologyIRIStr;
+
+    // Cache for storing individual preferences to avoid redundant checks
+    private Map<OWLNamedIndividual, List<String>> dietaryPreferencesCache = new ConcurrentHashMap<>();
 
     public RecipeService(DataPropertyService dataPropertyService, ObjectPropertyService objectPropertyService, OntologyService ontologyService, FoodItemService foodItemService) {
         this.dataPropertyService = dataPropertyService;
@@ -77,14 +81,16 @@ public class RecipeService {
                 .collect(Collectors.toList());
         recipe.setIngredients(ingredientNames);
 
-        // Calculate allergens from ingredients
-        //calculateAllergens(recipe, ingredientNames);
+        calculateNutrition(recipe, ingredientNames);
 
-        recipe.setDietaryPreferences(getDietaryPreferences(individual));
+        List<String> dietaryPreferences = getDietaryPreferences(individual);
+        System.out.println("Dietary preferences for recipe " + recipe.getRecipeName() + ": " + dietaryPreferences);
+        recipe.setDietaryPreferences(dietaryPreferences);
+
         recipes.add(recipe);
     }
 
-    private void calculateNutritionAndAllergens(Recipe recipe, List<String> ingredientNames) {
+    private void calculateNutrition(Recipe recipe, List<String> ingredientNames) {
         float totalCalories = 0;
         float totalFat = 0;
         float totalProtein = 0;
@@ -92,7 +98,7 @@ public class RecipeService {
 
         for (String ingredientName : ingredientNames) {
             Optional<FoodItem> foodItem = foodItemService.getFoodItems().stream()
-                    .filter(item -> ingredientName.replace("_"," ").equals(item.getFoodName()))
+                    .filter(item -> ingredientName.replace("_", " ").equals(item.getFoodName()))
                     .findFirst();
 
             if (foodItem.isPresent()) {
@@ -105,38 +111,38 @@ public class RecipeService {
         }
 
         int ingredientCount = ingredientNames.size();
-        recipe.setCaloriesPer100gram(totalCalories / ingredientCount);
-        recipe.setFatContent(totalFat / ingredientCount);
-        recipe.setProteinContent(totalProtein / ingredientCount);
-        recipe.setSugarContent(totalSugar / ingredientCount);
-    }
-
-    private void calculateAllergens(Recipe recipe, List<String> ingredientNames) {
-        Set<String> allergens = new HashSet<>();
-
-        for (String ingredientName : ingredientNames) {
-            Optional<FoodItem> foodItem = foodItemService.getFoodItems().stream()
-                    .filter(item -> ingredientName.equals(item.getFoodName()))
-                    .findFirst();
-
-            if (foodItem.isPresent()) {
-                FoodItem item = foodItem.get();
-                if (item.getAllergens() != null) {
-                    allergens.addAll(item.getAllergens());
-                }
-            }
+        if (ingredientCount > 0) {
+            recipe.setCaloriesPer100gram(totalCalories / ingredientCount);
+            recipe.setFatContent(totalFat / ingredientCount);
+            recipe.setProteinContent(totalProtein / ingredientCount);
+            recipe.setSugarContent(totalSugar / ingredientCount);
+        } else {
+            recipe.setCaloriesPer100gram(0);
+            recipe.setFatContent(0);
+            recipe.setProteinContent(0);
+            recipe.setSugarContent(0);
         }
-
-        //recipe.setAllergens(new ArrayList<>(allergens));
     }
 
     private List<String> getDietaryPreferences(OWLNamedIndividual individual) {
-        List<String> preferences = new ArrayList<>();
-        for (Map.Entry<OWLClass, String> entry : ontologyService.getDietaryPreferencesMap().entrySet()) {
-            if (ontologyService.isIndividualOfClass(individual, entry.getKey())) {
-                preferences.add(ontologyService.getFragment(entry.getValue()));
-            }
+        if (dietaryPreferencesCache.containsKey(individual)) {
+            return dietaryPreferencesCache.get(individual);
         }
+
+        List<String> preferences = new ArrayList<>();
+        try {
+            for (Map.Entry<OWLClass, String> entry : ontologyService.getDietaryPreferencesMap().entrySet()) {
+                if (ontologyService.isIndividualOfClass(individual, entry.getKey())) {
+                    String preference = ontologyService.getFragment(entry.getValue());
+                    System.out.println("Individual " + individual.getIRI() + " has preference: " + preference);
+                    preferences.add(preference);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching dietary preferences for individual " + individual.getIRI() + ": " + e.getMessage());
+        }
+
+        dietaryPreferencesCache.put(individual, preferences);
         return preferences;
     }
 
@@ -156,14 +162,12 @@ public class RecipeService {
         dataPropertyService.addDataProperty(recipeIndividual, "servingSize", recipe.getServingSize());
         dataPropertyService.addDataProperty(recipeIndividual, "description", recipe.getDescription());
 
-        // Calculate and save nutrition
-        calculateNutritionAndAllergens(recipe, recipe.getIngredients());
+        calculateNutrition(recipe, recipe.getIngredients());
         dataPropertyService.addDataProperty(recipeIndividual, "caloriesPer100gram", recipe.getCaloriesPer100gram());
         dataPropertyService.addDataProperty(recipeIndividual, "fatContent", recipe.getFatContent());
         dataPropertyService.addDataProperty(recipeIndividual, "proteinContent", recipe.getProteinContent());
         dataPropertyService.addDataProperty(recipeIndividual, "sugarContent", recipe.getSugarContent());
 
-        // Add object property assertions for ingredients
         objectPropertyService.addObjectProperties(recipeIndividual, "hasIngredient", recipe.getIngredients());
 
         ontologyService.saveOntology();
@@ -172,7 +176,6 @@ public class RecipeService {
     public void editRecipe(Recipe recipe) {
         OWLNamedIndividual recipeIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + recipe.getId()));
 
-        // Remove existing data properties
         dataPropertyService.removeDataProperties(recipeIndividual, "cookingTime");
         dataPropertyService.removeDataProperties(recipeIndividual, "preparationTime");
         dataPropertyService.removeDataProperties(recipeIndividual, "servingSize");
@@ -183,24 +186,20 @@ public class RecipeService {
         dataPropertyService.removeDataProperties(recipeIndividual, "proteinContent");
         dataPropertyService.removeDataProperties(recipeIndividual, "sugarContent");
 
-        // Add new data properties
         dataPropertyService.addDataProperty(recipeIndividual, "recipeName", recipe.getRecipeName());
         dataPropertyService.addDataProperty(recipeIndividual, "cookingTime", recipe.getCookingTime());
         dataPropertyService.addDataProperty(recipeIndividual, "preparationTime", recipe.getPreparationTime());
         dataPropertyService.addDataProperty(recipeIndividual, "servingSize", recipe.getServingSize());
         dataPropertyService.addDataProperty(recipeIndividual, "description", recipe.getDescription());
 
-        // Calculate and save nutrition
-        calculateNutritionAndAllergens(recipe, recipe.getIngredients());
+        calculateNutrition(recipe, recipe.getIngredients());
         dataPropertyService.addDataProperty(recipeIndividual, "caloriesPer100gram", recipe.getCaloriesPer100gram());
         dataPropertyService.addDataProperty(recipeIndividual, "fatContent", recipe.getFatContent());
         dataPropertyService.addDataProperty(recipeIndividual, "proteinContent", recipe.getProteinContent());
         dataPropertyService.addDataProperty(recipeIndividual, "sugarContent", recipe.getSugarContent());
 
-        // Remove existing object properties
         objectPropertyService.removeObjectProperties(recipeIndividual, "hasIngredient");
 
-        // Add new object properties
         objectPropertyService.addObjectProperties(recipeIndividual, "hasIngredient", recipe.getIngredients());
 
         ontologyService.saveOntology();
@@ -228,15 +227,25 @@ public class RecipeService {
             if (ontology.getClassAssertionAxioms(individual).stream()
                     .anyMatch(axiom -> axiom.getClassesInSignature().contains(recipeClass))) {
 
-                // Check if the individual matches all preference classes
                 boolean matchesAllPreferences = preferenceClasses.stream()
-                        .allMatch(preferenceClass -> ontologyService.getReasoner().getTypes(individual, false).containsEntity(preferenceClass));
+                        .allMatch(preferenceClass -> ontologyService.isIndividualOfClass(individual, preferenceClass));
 
                 if (matchesAllPreferences) {
                     getRecipe(recipes, individual);
                 }
+
             }
         }
         return recipes;
+    }
+
+    private List<String> getDietaryPreferences2(OWLNamedIndividual individual) {
+        List<String> preferences = new ArrayList<>();
+        for (Map.Entry<OWLClass, String> entry : ontologyService.getDietaryPreferencesMap().entrySet()) {
+            if (ontologyService.isIndividualOfClass(individual, entry.getKey())) {
+                preferences.add(ontologyService.getFragment(entry.getValue()));
+            }
+        }
+        return preferences;
     }
 }

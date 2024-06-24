@@ -16,39 +16,56 @@ public class DataPropertyService {
   @Autowired
   OntologyService ontologyService;
 
-    public DataPropertyService(OntologyService ontologyService){
-      this.ontologyService = ontologyService;
-    }
+  public DataPropertyService(OntologyService ontologyService) {
+    this.ontologyService = ontologyService;
+  }
 
   public String getDataPropertyValue(OWLNamedIndividual individual, String propertyName) {
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
-    Set<OWLLiteral> literals = ontologyService.getOntology().getDataPropertyAssertionAxioms(individual).stream()
-            .filter(axiom -> axiom.getProperty().equals(property))
-            .map(OWLDataPropertyAssertionAxiom::getObject)
-            .collect(Collectors.toSet());
-    if (literals.isEmpty()) {
+    Set<OWLDataPropertyAssertionAxiom> axioms = ontologyService.getOntology().getDataPropertyAssertionAxioms(individual);
+
+    if (axioms == null || axioms.isEmpty()) {
       return null;
     }
-    return literals.iterator().next().getLiteral();
+
+    for (OWLDataPropertyAssertionAxiom axiom : axioms) {
+      if (axiom.getProperty().equals(property)) {
+        OWLLiteral literal = axiom.getObject();
+        if (literal != null) {
+          return literal.getLiteral();
+        }
+      }
+    }
+
+    return null;
   }
 
-  public void addDataProperty(OWLNamedIndividual individual, String propertyName, String value) {
+  public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, String value) {
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
-    ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), axiom);
+    return new AddAxiom(ontologyService.getOntology(), axiom);
   }
 
-  public void addDataProperty(OWLNamedIndividual individual, String propertyName, float value) {
+  public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, float value) {
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
-    ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), axiom);
+    return new AddAxiom(ontologyService.getOntology(), axiom);
   }
 
-
-  public void addDataProperty(OWLNamedIndividual individual, String propertyName, int value) {
+  public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, int value) {
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
-    ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), axiom);
+    return new AddAxiom(ontologyService.getOntology(), axiom);
+  }
+
+  public Set<OWLOntologyChange> removeDataProperties(OWLNamedIndividual individual, String propertyName) {
+    OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
+    Set<OWLAxiom> axiomsToRemove = ontologyService.getOntology().getDataPropertyAssertionAxioms(individual).stream()
+            .filter(axiom -> axiom.getProperty().equals(property))
+            .collect(Collectors.toSet());
+    return axiomsToRemove.stream()
+            .map(axiom -> new RemoveAxiom(ontologyService.getOntology(), axiom))
+            .collect(Collectors.toSet());
   }
 
   public float getFloatValue(OWLNamedIndividual individual, String propertyName) {
@@ -60,16 +77,4 @@ public class DataPropertyService {
     String value = getDataPropertyValue(individual, propertyName);
     return value == null ? 0 : Integer.parseInt(value);
   }
-
-  public void removeDataProperties(OWLNamedIndividual individual, String propertyName) {
-    OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
-    Set<OWLAxiom> axiomsToRemove = ontologyService.getOntology().getDataPropertyAssertionAxioms(individual).stream()
-            .filter(axiom -> axiom.getProperty().equals(property))
-            .collect(Collectors.toSet());
-    ontologyService.getOntoManager().removeAxioms(ontologyService.getOntology(), axiomsToRemove);
-  }
-
-
-
-
 }

@@ -1,11 +1,9 @@
 package fit.health.fithealthapi.services;
 
 import org.semanticweb.owlapi.model.*;
-import org.semanticweb.owlapi.util.OWLEntityRemover;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -13,10 +11,8 @@ import java.util.stream.Collectors;
 @Service
 public class ObjectPropertyService {
 
-
     @Autowired
     OntologyService ontologyService;
-
 
     public ObjectPropertyService(OntologyService ontologyService){
         this.ontologyService = ontologyService;
@@ -30,22 +26,27 @@ public class ObjectPropertyService {
                 .collect(Collectors.toList());
     }
 
-    public void addObjectProperties(OWLNamedIndividual individual, String propertyName, List<String> values) {
-        if (values != null) {
-            OWLObjectProperty property = ontologyService.getDataFactory().getOWLObjectProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
-            for (String value : values) {
-                OWLNamedIndividual objectIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + value));
-                OWLAxiom axiom = ontologyService.getDataFactory().getOWLObjectPropertyAssertionAxiom(property, individual, objectIndividual);
-                ontologyService.getOntoManager().addAxiom(ontologyService.getOntology(), axiom);
-            }
+    public List<OWLOntologyChange> addObjectProperties(OWLNamedIndividual individual, String propertyName, List<String> values) {
+        if (values == null) {
+            return List.of();
         }
+        OWLObjectProperty property = ontologyService.getDataFactory().getOWLObjectProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
+        return values.stream()
+                .map(value -> {
+                    OWLNamedIndividual objectIndividual = ontologyService.getDataFactory().getOWLNamedIndividual(IRI.create(ontologyService.getOntologyIRIStr() + value));
+                    OWLAxiom axiom = ontologyService.getDataFactory().getOWLObjectPropertyAssertionAxiom(property, individual, objectIndividual);
+                    return new AddAxiom(ontologyService.getOntology(), axiom);
+                })
+                .collect(Collectors.toList());
     }
 
-    public void removeObjectProperties(OWLNamedIndividual individual, String propertyName) {
+    public List<OWLOntologyChange> removeObjectProperties(OWLNamedIndividual individual, String propertyName) {
         OWLObjectProperty property = ontologyService.getDataFactory().getOWLObjectProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
         Set<OWLAxiom> axiomsToRemove = ontologyService.getOntology().getObjectPropertyAssertionAxioms(individual).stream()
                 .filter(axiom -> axiom.getProperty().equals(property))
                 .collect(Collectors.toSet());
-        ontologyService.getOntoManager().removeAxioms(ontologyService.getOntology(), axiomsToRemove);
+        return axiomsToRemove.stream()
+                .map(axiom -> new RemoveAxiom(ontologyService.getOntology(), axiom))
+                .collect(Collectors.toList());
     }
 }

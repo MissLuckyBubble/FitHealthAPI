@@ -29,13 +29,6 @@ public class JadeConfig {
 
         mainContainer = runtime.createMainContainer(profile);
 
-        try {
-            AgentController userAgent = mainContainer.createNewAgent(
-                    "UserAgent123", "fit.health.fithealthapi.agents.UserAgent", null);
-            userAgent.start();
-        } catch (StaleProxyException e) {
-            e.printStackTrace();
-        }
         System.out.println("JADE!!! STARTED");
     }
 

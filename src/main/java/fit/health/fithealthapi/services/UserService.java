@@ -11,9 +11,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import static java.time.LocalTime.now;
 
@@ -34,15 +35,17 @@ public class UserService {
     private OWLOntology ontology;
     private String ontologyIRIStr;
 
+    // Cache for frequently accessed data
+    private ConcurrentMap<String, OWLNamedIndividual> individualCache = new ConcurrentHashMap<>();
+
     public UserService(DataPropertyService dataPropertyService, ObjectPropertyService objectPropertyService, OntologyService ontologyService) {
         this.dataPropertyService = dataPropertyService;
         this.objectPropertyService = objectPropertyService;
         this.ontologyService = ontologyService;
-
         init();
     }
 
-    private void init(){
+    private void init() {
         ontoManager = ontologyService.getOntoManager();
         dataFactory = ontologyService.getDataFactory();
         ontology = ontologyService.getOntology();
@@ -50,37 +53,40 @@ public class UserService {
     }
 
     public void createUser(User user) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername().replace(" ", "_")));
-        if (ontology.containsIndividualInSignature(userIndividual.getIRI())) {
+        IRI userIRI = IRI.create(ontologyIRIStr + user.getUsername().replace(" ", "_"));
+        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(userIRI);
+
+        if (ontology.containsIndividualInSignature(userIRI)) {
             throw new CustomException("User already exists!");
         }
 
         OWLClass userClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "User"));
         OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(userClass, userIndividual);
-        ontoManager.addAxiom(ontology, classAssertion);
 
-        dataPropertyService.addDataProperty(userIndividual, "username", user.getUsername());
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        dataPropertyService.addDataProperty(userIndividual, "password", encodedPassword);
-        dataPropertyService.addDataProperty(userIndividual, "birthDate", user.getBirthDate());
-        dataPropertyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
-        dataPropertyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
-        dataPropertyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
+        List<OWLOntologyChange> changes = new ArrayList<>();
+        changes.add(new AddAxiom(ontology, classAssertion));
 
-        // Calculate and add dailyCalorieGoal
-        float dailyCalorieGoal = calculateDailyCalorieGoal(user);
-        dataPropertyService.addDataProperty(userIndividual, "dailyCalorieGoal", dailyCalorieGoal);
+        addDataPropertyChanges(changes, userIndividual, "username", user.getUsername());
+        addDataPropertyChanges(changes, userIndividual, "password", passwordEncoder.encode(user.getPassword()));
+        addDataPropertyChanges(changes, userIndividual, "birthDate", user.getBirthDate());
+        addDataPropertyChanges(changes, userIndividual, "weightKG", user.getWeightKG());
+        addDataPropertyChanges(changes, userIndividual, "goalWeight", user.getGoalWeight());
+        addDataPropertyChanges(changes, userIndividual, "heightCM", user.getHeightCM());
+        addDataPropertyChanges(changes, userIndividual, "dailyCalorieGoal", calculateDailyCalorieGoal(user));
 
-        // Add gender
         OWLNamedIndividual genderIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getGender()));
         OWLObjectProperty hasGender = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasGender"));
         OWLAxiom genderAxiom = dataFactory.getOWLObjectPropertyAssertionAxiom(hasGender, userIndividual, genderIndividual);
-        ontoManager.addAxiom(ontology, genderAxiom);
+        changes.add(new AddAxiom(ontology, genderAxiom));
 
-        objectPropertyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
-        objectPropertyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
+        changes.addAll(createObjectPropertiesChanges(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences()));
+        changes.addAll(createObjectPropertiesChanges(userIndividual, "userHasHealthCondition", user.getHealthConditions()));
 
+        ontoManager.applyChanges(changes);
         ontologyService.saveOntology();
+
+        // Update cache
+        individualCache.put(user.getUsername(), userIndividual);
     }
 
     private float calculateDailyCalorieGoal(User user) {
@@ -89,17 +95,20 @@ public class UserService {
         int currentYear = Calendar.getInstance().get(Calendar.YEAR);
         int age = currentYear - birthYear;
 
-        if ("Male".equals(user.getGender())) {
-            return (float) ((10 * user.getWeightKG()) + (6.25 * user.getHeightCM()) - (5 * age) + 5);
-        } else if ("Female".equals(user.getGender())) {
-            return (float) ((10 * user.getWeightKG()) + (6.25 * user.getHeightCM()) - (5 * age) - 161);
-        } else {
-            throw new CustomException("Invalid gender value");
+        switch (user.getGender()) {
+            case "Male":
+                return (float) ((10 * user.getWeightKG()) + (6.25 * user.getHeightCM()) - (5 * age) + 5);
+            case "Female":
+                return (float) ((10 * user.getWeightKG()) + (6.25 * user.getHeightCM()) - (5 * age) - 161);
+            case "PreferNotToSay":
+                return (float) ((10 * user.getWeightKG()) + (6.25 * user.getHeightCM()) - (5 * age));
+            default:
+                throw new CustomException("Invalid gender value");
         }
     }
 
     public User loginUser(String username, String password) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username));
+        OWLNamedIndividual userIndividual = getCachedIndividual(username);
         String storedPassword = dataPropertyService.getDataPropertyValue(userIndividual, "password");
 
         if (storedPassword != null && passwordEncoder.matches(password, storedPassword)) {
@@ -110,19 +119,19 @@ public class UserService {
     }
 
     private User getUser(OWLNamedIndividual individual) {
-        User user = new User();
-        user.setId(individual.getIRI().toString());
-        user.setUsername(dataPropertyService.getDataPropertyValue(individual, "username"));
-        user.setPassword(dataPropertyService.getDataPropertyValue(individual, "password"));
-        user.setBirthDate(dataPropertyService.getDataPropertyValue(individual, "birthDate"));
-        user.setWeightKG(dataPropertyService.getFloatValue(individual, "weightKG"));
-        user.setGoalWeight(dataPropertyService.getFloatValue(individual, "goalWeight"));
-        user.setHeightCM(dataPropertyService.getFloatValue(individual, "heightCM"));
-        user.setDailyCalorieGoal(dataPropertyService.getFloatValue(individual, "dailyCalorieGoal"));
-        user.setGender(getGender(individual));
-        user.setDietaryPreferences(objectPropertyService.getObjectPropertyValues(individual, "userHasDietaryPreference"));
-        user.setHealthConditions(objectPropertyService.getObjectPropertyValues(individual, "userHasHealthCondition"));
-        return user;
+        return new User(
+                individual.getIRI().toString(),
+                dataPropertyService.getDataPropertyValue(individual, "username"),
+                dataPropertyService.getDataPropertyValue(individual, "password"),
+                dataPropertyService.getDataPropertyValue(individual, "birthDate"),
+                dataPropertyService.getFloatValue(individual, "weightKG"),
+                dataPropertyService.getFloatValue(individual, "goalWeight"),
+                dataPropertyService.getFloatValue(individual, "heightCM"),
+                dataPropertyService.getFloatValue(individual, "dailyCalorieGoal"),
+                getGender(individual),
+                objectPropertyService.getObjectPropertyValues(individual, "userHasDietaryPreference"),
+                objectPropertyService.getObjectPropertyValues(individual, "userHasHealthCondition")
+        );
     }
 
     private String getGender(OWLNamedIndividual individual) {
@@ -133,54 +142,57 @@ public class UserService {
     }
 
     public void editUser(User user, String oldPassword) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getUsername()));
+        OWLNamedIndividual userIndividual = getCachedIndividual(user.getUsername());
         String storedPassword = dataPropertyService.getDataPropertyValue(userIndividual, "password");
 
         if (storedPassword == null || !passwordEncoder.matches(oldPassword, storedPassword)) {
             throw new CustomException("Invalid old password");
         }
 
-        dataPropertyService.removeDataProperties(userIndividual, "weightKG");
-        dataPropertyService.removeDataProperties(userIndividual, "goalWeight");
-        dataPropertyService.removeDataProperties(userIndividual, "heightCM");
-        dataPropertyService.removeDataProperties(userIndividual, "password");
-        dataPropertyService.removeDataProperties(userIndividual, "dailyCalorieGoal");
+        List<OWLOntologyChange> changes = new ArrayList<>();
 
-        dataPropertyService.addDataProperty(userIndividual, "weightKG", user.getWeightKG());
-        dataPropertyService.addDataProperty(userIndividual, "goalWeight", user.getGoalWeight());
-        dataPropertyService.addDataProperty(userIndividual, "heightCM", user.getHeightCM());
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        dataPropertyService.addDataProperty(userIndividual, "password", encodedPassword);
+        changes.addAll(createRemoveDataPropertiesChanges(userIndividual, "weightKG"));
+        changes.addAll(createRemoveDataPropertiesChanges(userIndividual, "goalWeight"));
+        changes.addAll(createRemoveDataPropertiesChanges(userIndividual, "heightCM"));
+        changes.addAll(createRemoveDataPropertiesChanges(userIndividual, "password"));
+        changes.addAll(createRemoveDataPropertiesChanges(userIndividual, "dailyCalorieGoal"));
 
-        float dailyCalorieGoal = calculateDailyCalorieGoal(user);
-        dataPropertyService.addDataProperty(userIndividual, "dailyCalorieGoal", dailyCalorieGoal);
+        addDataPropertyChanges(changes, userIndividual, "weightKG", user.getWeightKG());
+        addDataPropertyChanges(changes, userIndividual, "goalWeight", user.getGoalWeight());
+        addDataPropertyChanges(changes, userIndividual, "heightCM", user.getHeightCM());
+        addDataPropertyChanges(changes, userIndividual, "password", passwordEncoder.encode(user.getPassword()));
+        addDataPropertyChanges(changes, userIndividual, "dailyCalorieGoal", calculateDailyCalorieGoal(user));
 
-        objectPropertyService.removeObjectProperties(userIndividual, "userHasDietaryPreference");
-        objectPropertyService.removeObjectProperties(userIndividual, "userHasHealthCondition");
-        objectPropertyService.removeObjectProperties(userIndividual, "hasGender");
+        changes.addAll(createRemoveObjectPropertiesChanges(userIndividual, "userHasDietaryPreference"));
+        changes.addAll(createRemoveObjectPropertiesChanges(userIndividual, "userHasHealthCondition"));
+        changes.addAll(createRemoveObjectPropertiesChanges(userIndividual, "hasGender"));
 
-        objectPropertyService.addObjectProperties(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences());
-        objectPropertyService.addObjectProperties(userIndividual, "userHasHealthCondition", user.getHealthConditions());
+        changes.addAll(createObjectPropertiesChanges(userIndividual, "userHasDietaryPreference", user.getDietaryPreferences()));
+        changes.addAll(createObjectPropertiesChanges(userIndividual, "userHasHealthCondition", user.getHealthConditions()));
 
         OWLNamedIndividual genderIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + user.getGender()));
         OWLObjectProperty hasGender = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasGender"));
         OWLAxiom genderAxiom = dataFactory.getOWLObjectPropertyAssertionAxiom(hasGender, userIndividual, genderIndividual);
-        ontoManager.addAxiom(ontology, genderAxiom);
+        changes.add(new AddAxiom(ontology, genderAxiom));
 
+        ontoManager.applyChanges(changes);
         ontologyService.saveOntology();
+
+        // Update cache
+        individualCache.put(user.getUsername(), userIndividual);
     }
 
     public void removeUser(String userId) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + userId));
+        OWLNamedIndividual userIndividual = getCachedIndividual(userId);
         OWLEntityRemover remover = new OWLEntityRemover(ontoManager, Collections.singleton(ontology));
         userIndividual.accept(remover);
         ontoManager.applyChanges(remover.getChanges());
-
         ontologyService.saveOntology();
+        individualCache.remove(userId);
     }
 
     public User getUserByUsername(String username) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username.replace(" ", "_")));
+        OWLNamedIndividual userIndividual = getCachedIndividual(username);
         if (ontology.containsIndividualInSignature(userIndividual.getIRI())) {
             return getUser(userIndividual);
         }
@@ -188,40 +200,82 @@ public class UserService {
     }
 
     public void saveMealPlan(String username, List<Recipe> mealPlan) {
-        OWLNamedIndividual userIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username.replace(" ", "_")));
+        OWLNamedIndividual userIndividual = getCachedIndividual(username);
         OWLNamedIndividual mealPlanIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username.replace(" ", "_") + "_MealPlan"));
         OWLClass mealPlanClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "MealPlan"));
 
-        // Create meal plan individual
-        OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(mealPlanClass, mealPlanIndividual);
-        ontoManager.addAxiom(ontology, classAssertion);
+        List<OWLOntologyChange> changes = new ArrayList<>();
+        changes.add(new AddAxiom(ontology, dataFactory.getOWLClassAssertionAxiom(mealPlanClass, mealPlanIndividual)));
+        changes.add(new AddAxiom(ontology, dataFactory.getOWLDataPropertyAssertionAxiom(dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + "mealPlanName")), mealPlanIndividual, username + "'s Meal Plan (" + now() + ")")));
 
-        // Add meal plan name
-        dataPropertyService.addDataProperty(mealPlanIndividual, "mealPlanName", username + "'s Meal Plan (" + now()+")" );
-
-        // Add recipes to meal plan
         float totalCalories = 0;
         for (Recipe recipe : mealPlan) {
             OWLNamedIndividual recipeIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + recipe.getRecipeName().replace(" ", "_")));
-            OWLObjectProperty hasRecipe = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasRecipe"));
-            OWLAxiom axiom = dataFactory.getOWLObjectPropertyAssertionAxiom(hasRecipe, mealPlanIndividual, recipeIndividual);
-            ontoManager.addAxiom(ontology, axiom);
+            changes.add(new AddAxiom(ontology, dataFactory.getOWLObjectPropertyAssertionAxiom(dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasRecipe")), mealPlanIndividual, recipeIndividual)));
             totalCalories += recipe.getCaloriesPer100gram();
-
         }
 
-        dataPropertyService.addDataProperty(mealPlanIndividual, "hasTotalCalories", totalCalories);
+        changes.add(new AddAxiom(ontology, dataFactory.getOWLDataPropertyAssertionAxiom(dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + "hasTotalCalories")), mealPlanIndividual, totalCalories)));
+        changes.add(new AddAxiom(ontology, dataFactory.getOWLObjectPropertyAssertionAxiom(dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasMealPlan")), userIndividual, mealPlanIndividual)));
 
-
-        OWLObjectProperty hasMealPlan = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasMealPlan"));
-        OWLAxiom linkAxiom = dataFactory.getOWLObjectPropertyAssertionAxiom(hasMealPlan, userIndividual, mealPlanIndividual);
-        ontoManager.addAxiom(ontology, linkAxiom);
-
+        ontoManager.applyChanges(changes);
         ontologyService.saveOntology();
     }
 
     public List<Recipe> getMealPlan(String username) {
-        //TODO
-        return  null;
+        // TODO: Implement the method to retrieve the meal plan
+        return null;
+    }
+
+    private OWLNamedIndividual getCachedIndividual(String username) {
+        return individualCache.computeIfAbsent(username, key -> dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + key.replace(" ", "_"))));
+    }
+
+    private void addDataPropertyChanges(List<OWLOntologyChange> changes, OWLNamedIndividual individual, String propertyName, Object value) {
+        OWLDataProperty property = dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + propertyName));
+        OWLAxiom axiom;
+        if (value instanceof String) {
+            axiom = dataFactory.getOWLDataPropertyAssertionAxiom(property, individual, (String) value);
+        } else if (value instanceof Float) {
+            axiom = dataFactory.getOWLDataPropertyAssertionAxiom(property, individual, (Float) value);
+        } else if (value instanceof Integer) {
+            axiom = dataFactory.getOWLDataPropertyAssertionAxiom(property, individual, (Integer) value);
+        } else {
+            throw new IllegalArgumentException("Unsupported data property value type");
+        }
+        changes.add(new AddAxiom(ontology, axiom));
+    }
+
+    private List<OWLOntologyChange> createRemoveDataPropertiesChanges(OWLNamedIndividual individual, String propertyName) {
+        OWLDataProperty property = dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + propertyName));
+        Set<OWLAxiom> axiomsToRemove = ontology.getDataPropertyAssertionAxioms(individual).stream()
+                .filter(axiom -> axiom.getProperty().equals(property))
+                .collect(Collectors.toSet());
+        return axiomsToRemove.stream()
+                .map(axiom -> new RemoveAxiom(ontology, axiom))
+                .collect(Collectors.toList());
+    }
+
+    private List<OWLOntologyChange> createObjectPropertiesChanges(OWLNamedIndividual individual, String propertyName, List<String> values) {
+        List<OWLOntologyChange> changes = new ArrayList<>();
+        if (values != null) {
+            OWLObjectProperty property = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + propertyName));
+            for (String value : values) {
+                OWLNamedIndividual objectIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + value));
+                OWLAxiom axiom = dataFactory.getOWLObjectPropertyAssertionAxiom(property, individual, objectIndividual);
+                changes.add(new AddAxiom(ontology, axiom));
+            }
+        }
+        return changes;
+    }
+
+    private List<OWLOntologyChange> createRemoveObjectPropertiesChanges(OWLNamedIndividual individual, String propertyName) {
+        OWLObjectProperty property = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + propertyName));
+        Set<OWLAxiom> axiomsToRemove = ontology.getObjectPropertyAssertionAxioms(individual).stream()
+                .filter(axiom -> axiom.getProperty().equals(property))
+                .collect(Collectors.toSet());
+        return axiomsToRemove.stream()
+                .map(axiom -> new RemoveAxiom(ontology, axiom))
+                .collect(Collectors.toList());
     }
 }
