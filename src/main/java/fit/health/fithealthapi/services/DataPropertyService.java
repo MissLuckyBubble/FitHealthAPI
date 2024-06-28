@@ -41,18 +41,23 @@ public class DataPropertyService {
   }
 
   public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, String value) {
+    System.out.println(propertyName + " " + value);
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
     return new AddAxiom(ontologyService.getOntology(), axiom);
   }
 
   public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, float value) {
+    System.out.println(propertyName + " " + value);
+
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
     return new AddAxiom(ontologyService.getOntology(), axiom);
   }
 
   public OWLOntologyChange addDataProperty(OWLNamedIndividual individual, String propertyName, int value) {
+    System.out.println(propertyName + " " + value);
+
     OWLDataProperty property = ontologyService.getDataFactory().getOWLDataProperty(IRI.create(ontologyService.getOntologyIRIStr() + propertyName));
     OWLAxiom axiom = ontologyService.getDataFactory().getOWLDataPropertyAssertionAxiom(property, individual, value);
     return new AddAxiom(ontologyService.getOntology(), axiom);

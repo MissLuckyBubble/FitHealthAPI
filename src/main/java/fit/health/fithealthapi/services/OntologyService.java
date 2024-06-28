@@ -31,7 +31,7 @@ public class OntologyService {
     @Getter
     private OWLReasoner reasoner;
     @Getter
-    private final Map<OWLClass, String> dietaryPreferencesMap = new HashMap<>();
+    private Map<OWLClass, String> dietaryPreferencesMap = new HashMap<>();
 
     public OntologyService() {
         ontoManager = OWLManager.createOWLOntologyManager();
@@ -75,18 +75,27 @@ public class OntologyService {
     }
 
     private void loadDietaryPreferences() {
+        LOGGER.info("IN DIETARY");
         try {
             OWLClass dietaryPreferenceClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "DietaryPreference"));
-            Set<OWLClass> dietaryPreferences = reasoner.getSubClasses(dietaryPreferenceClass, false).getFlattened();
-            for (OWLClass dietaryPreference : dietaryPreferences) {
-                String shortForm = dietaryPreference.getIRI().toString();
-                dietaryPreferencesMap.put(dietaryPreference, shortForm);
-                LOGGER.info("Loaded dietary preference: " + shortForm);
+
+            // Iterate over all classes in the ontology and check if they are subclasses of DietaryPreference
+            for (OWLClass owlClass : ontology.getClassesInSignature()) {
+                for (OWLSubClassOfAxiom axiom : ontology.getSubClassAxiomsForSubClass(owlClass)) {
+                    if (axiom.getSuperClass().equals(dietaryPreferenceClass)) {
+                        String shortForm = owlClass.getIRI().toString();
+                        dietaryPreferencesMap.put(owlClass, shortForm);
+                        LOGGER.info("Loaded dietary preference: " + shortForm);
+                    }
+                }
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to load dietary preferences", e);
         }
     }
+
+
+
 
     public List<String> getDietaryPreferences() {
         return dietaryPreferencesMap.values().stream()
@@ -100,7 +109,7 @@ public class OntologyService {
             return false;
         }
         try {
-            boolean result = reasoner.getTypes(individual, true).containsEntity(owlClass);
+            boolean result = reasoner.getTypes(individual, false).containsEntity(owlClass);
             LOGGER.info("Individual " + individual + " is of class " + owlClass + ": " + result);
             return result;
         } catch (Exception e) {
@@ -115,10 +124,16 @@ public class OntologyService {
     public void updateReasoner() {
         try {
             initializeReasoner();
-            loadDietaryPreferences();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to update reasoner", e);
         }
+    }
+
+    public List<String> getTypes(OWLNamedIndividual individual) {
+        System.out.println("Getting types: " + individual.getIRI().getFragment());
+        return reasoner.getTypes(individual, false).getFlattened().stream()
+                .map(owlClass -> getFragment(owlClass.getIRI().toString()))
+                .collect(Collectors.toList());
     }
 
     public void saveOntology() {

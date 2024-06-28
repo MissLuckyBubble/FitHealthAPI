@@ -103,60 +103,67 @@ public class FoodItemService {
     }
 
     private synchronized List<String> getDietaryPreferences(OWLNamedIndividual individual) {
-        List<String> preferences = new ArrayList<>();
-        for (Map.Entry<OWLClass, String> entry : ontologyService.getDietaryPreferencesMap().entrySet()) {
-            if (ontologyService.isIndividualOfClass(individual, entry.getKey())) {
-                preferences.add(ontologyService.getFragment(entry.getValue()));
-            }
-        }
-        return preferences;
+       return ontologyService.getTypes(individual);
     }
 
     public void createFoodItem(FoodItem foodItem) {
+        System.out.println(foodItem.getFoodName());
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItem.getFoodName().replace(" ", "_")));
         if (ontology.containsIndividualInSignature(foodIndividual.getIRI())) {
             throw new CustomException("Food item already exists");
         }
         OWLClass foodItemClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "FoodItem"));
 
+        List<OWLOntologyChange> changes = new ArrayList<>();
         OWLAxiom classAssertion = dataFactory.getOWLClassAssertionAxiom(foodItemClass, foodIndividual);
-        ontoManager.addAxiom(ontology, classAssertion);
+        changes.add(new AddAxiom(ontology, classAssertion));
 
-        dataPropertyService.addDataProperty(foodIndividual, "foodName", foodItem.getFoodName());
-        dataPropertyService.addDataProperty(foodIndividual, "caloriesPer100gram", foodItem.getCaloriesPer100gram());
-        dataPropertyService.addDataProperty(foodIndividual, "fatContent", foodItem.getFatContent());
-        dataPropertyService.addDataProperty(foodIndividual, "proteinContent", foodItem.getProteinContent());
-        dataPropertyService.addDataProperty(foodIndividual, "sugarContent", foodItem.getSugarContent());
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "foodName", foodItem.getFoodName()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "caloriesPer100gram", foodItem.getCaloriesPer100gram()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "fatContent", foodItem.getFatContent()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "proteinContent", foodItem.getProteinContent()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "sugarContent", foodItem.getSugarContent()));
 
-        // Add object property assertions for allergens
-        objectPropertyService.addObjectProperties(foodIndividual, "hasAllergen", foodItem.getAllergens());
+        // Add object property assertions for allergens with restrictions
+        addAllergens(foodItem, foodIndividual, changes);
+
+        // Apply all changes
+        ontoManager.applyChanges(changes);
 
         ontologyService.saveOntology();
     }
+
+
+
 
     public void editFoodItem(FoodItem foodItem) {
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItem.getId()));
 
+        List<OWLOntologyChange> changes = new ArrayList<>();
+
         // Remove existing data properties
-        dataPropertyService.removeDataProperties(foodIndividual, "caloriesPer100gram");
-        dataPropertyService.removeDataProperties(foodIndividual, "fatContent");
-        dataPropertyService.removeDataProperties(foodIndividual, "proteinContent");
-        dataPropertyService.removeDataProperties(foodIndividual, "sugarContent");
+        changes.addAll(dataPropertyService.removeDataProperties(foodIndividual, "caloriesPer100gram"));
+        changes.addAll(dataPropertyService.removeDataProperties(foodIndividual, "fatContent"));
+        changes.addAll(dataPropertyService.removeDataProperties(foodIndividual, "proteinContent"));
+        changes.addAll(dataPropertyService.removeDataProperties(foodIndividual, "sugarContent"));
 
         // Add new data properties
-        dataPropertyService.addDataProperty(foodIndividual, "caloriesPer100gram", foodItem.getCaloriesPer100gram());
-        dataPropertyService.addDataProperty(foodIndividual, "fatContent", foodItem.getFatContent());
-        dataPropertyService.addDataProperty(foodIndividual, "proteinContent", foodItem.getProteinContent());
-        dataPropertyService.addDataProperty(foodIndividual, "sugarContent", foodItem.getSugarContent());
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "caloriesPer100gram", foodItem.getCaloriesPer100gram()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "fatContent", foodItem.getFatContent()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "proteinContent", foodItem.getProteinContent()));
+        changes.add(dataPropertyService.addDataProperty(foodIndividual, "sugarContent", foodItem.getSugarContent()));
 
         // Remove existing object properties
-        objectPropertyService.removeObjectProperties(foodIndividual, "hasAllergen");
+        changes.addAll(objectPropertyService.removeObjectProperties(foodIndividual, "hasAllergen"));
 
-        // Add new object properties
-        objectPropertyService.addObjectProperties(foodIndividual, "hasAllergen", foodItem.getAllergens());
+        addAllergens(foodItem, foodIndividual, changes);
+
+        // Apply all changes
+        ontoManager.applyChanges(changes);
 
         ontologyService.saveOntology();
     }
+
 
     public void removeFoodItem(String foodItemId) {
         OWLNamedIndividual foodIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + foodItemId));
@@ -167,9 +174,31 @@ public class FoodItemService {
         ontologyService.saveOntology();
     }
 
+    private void addAllergens(FoodItem foodItem, OWLNamedIndividual foodIndividual, List<OWLOntologyChange> changes) {
+        for (String allergenName : foodItem.getAllergens()) {
+            OWLObjectProperty hasAllergenProperty = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasAllergen"));
+
+            OWLClass allergenClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + allergenName.replace(" ", "_")));
+            OWLClassExpression allergenRestriction = dataFactory.getOWLObjectSomeValuesFrom(hasAllergenProperty, allergenClass);
+
+            OWLAxiom allergenAxiom = dataFactory.getOWLClassAssertionAxiom(allergenRestriction, foodIndividual);
+            changes.add(new AddAxiom(ontology, allergenAxiom));
+        }
+    }
+
     private List<String> getAllergens(OWLNamedIndividual individual) {
-        return objectPropertyService.getObjectPropertyValues(individual, "hasAllergen").stream()
-                .map(o -> ontologyService.getFragment(o))
+        OWLObjectProperty hasAllergenProperty = dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasAllergen"));
+
+        return ontology.getClassAssertionAxioms(individual).parallelStream()
+                .map(OWLClassAssertionAxiom::getClassExpression)
+                .filter(ce -> ce instanceof OWLObjectSomeValuesFrom)
+                .map(ce -> (OWLObjectSomeValuesFrom) ce)
+                .filter(sv -> sv.getProperty().equals(hasAllergenProperty))
+                .map(sv -> sv.getFiller())
+                .filter(filler -> filler instanceof OWLClass)
+                .map(filler -> (OWLClass) filler)
+                .map(allergenClass -> ontologyService.getFragment(allergenClass.getIRI().toString()))
                 .collect(Collectors.toList());
     }
+
 }

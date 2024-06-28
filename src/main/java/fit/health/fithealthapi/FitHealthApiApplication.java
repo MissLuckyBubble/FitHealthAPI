@@ -1,5 +1,7 @@
 package fit.health.fithealthapi;
 
+import fit.health.fithealthapi.services.OntologyService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -7,7 +9,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class FitHealthApiApplication {
     public static void main(String[] args) {
         System.out.println("Before SpringApplication.run");
-        SpringApplication.run(FitHealthApiApplication.class, args);
-        System.out.println("SERVER running");
+        try {
+            SpringApplication.run(FitHealthApiApplication.class, args);
+            System.out.println("SERVER running");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
+
