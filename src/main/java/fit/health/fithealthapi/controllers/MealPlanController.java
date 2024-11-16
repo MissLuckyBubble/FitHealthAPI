@@ -2,6 +2,8 @@ package fit.health.fithealthapi.controllers;
 
 import fit.health.fithealthapi.agents.MealPlanAgent;
 import fit.health.fithealthapi.agents.UserAgent;
+import fit.health.fithealthapi.exceptions.CustomException;
+import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.services.RecipeService;
@@ -27,6 +29,33 @@ public class MealPlanController {
 
     @Autowired
     private RecipeService recipeService;
+
+
+    @GetMapping("")
+    public ResponseEntity<?> getMealPlans(@RequestParam String username) {
+        try {
+            List<MealPlan> mealPlans = userService.getMealPlans(username);
+            if (mealPlans == null || mealPlans.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(mealPlans);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
+        }
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteMealPlan(@PathVariable("id") String mealPlanIdFragment) {
+        try {
+            userService.deleteMealPlan(mealPlanIdFragment);
+            return ResponseEntity.ok("Meal plan deleted successfully.");
+        } catch (CustomException e) {
+            return ResponseEntity.status(404).body("Meal plan not found: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/generate")
     public ResponseEntity<String> generateMealPlan(@RequestParam String username, @RequestParam int numberOfMeals, @RequestParam int days) {

@@ -201,7 +201,7 @@ public class RecipeService {
     }
 
     public List<Recipe> getRecipesByPreferences(List<String> preferences) {
-        List<Recipe> recipes = new ArrayList<>();
+        /*List<Recipe> recipes = new ArrayList<>();
         OWLClass recipeClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "Recipe"));
         Set<OWLNamedIndividual> individuals = ontology.getIndividualsInSignature();
 
@@ -222,7 +222,18 @@ public class RecipeService {
 
             }
         }
-        return recipes;
+        return recipes;*/
+
+        List<Recipe> recipes = getRecipes();
+        List<Recipe> filteredRecipes = new ArrayList<>();
+
+        for (Recipe r : recipes) {
+            if (new HashSet<>(r.getDietaryPreferences()).containsAll(preferences)) {
+                filteredRecipes.add(r);
+            }
+        }
+
+        return filteredRecipes;
     }
 
     private List<String> getDietaryPreferences2(OWLNamedIndividual individual) {

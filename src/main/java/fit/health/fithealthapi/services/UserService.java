@@ -1,6 +1,7 @@
 package fit.health.fithealthapi.services;
 
 import fit.health.fithealthapi.exceptions.CustomException;
+import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import lombok.Getter;
@@ -201,16 +202,17 @@ public class UserService {
 
     public void saveMealPlan(String username, List<Recipe> mealPlan) {
         OWLNamedIndividual userIndividual = getCachedIndividual(username);
-        OWLNamedIndividual mealPlanIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username.replace(" ", "_") + "_MealPlan"));
+        OWLNamedIndividual mealPlanIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + username.replace(" ", "_") + "_MealPlan_"+ now()));
         OWLClass mealPlanClass = dataFactory.getOWLClass(IRI.create(ontologyIRIStr + "MealPlan"));
+
 
         List<OWLOntologyChange> changes = new ArrayList<>();
         changes.add(new AddAxiom(ontology, dataFactory.getOWLClassAssertionAxiom(mealPlanClass, mealPlanIndividual)));
-        changes.add(new AddAxiom(ontology, dataFactory.getOWLDataPropertyAssertionAxiom(dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + "mealPlanName")), mealPlanIndividual, username + "'s Meal Plan (" + now() + ")")));
+        changes.add(new AddAxiom(ontology, dataFactory.getOWLDataPropertyAssertionAxiom(dataFactory.getOWLDataProperty(IRI.create(ontologyIRIStr + "mealPlanName")), mealPlanIndividual, username + "'s Meal Plan")));
 
         float totalCalories = 0;
         for (Recipe recipe : mealPlan) {
-            OWLNamedIndividual recipeIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + recipe.getRecipeName().replace(" ", "_")));
+            OWLNamedIndividual recipeIndividual = dataFactory.getOWLNamedIndividual(IRI.create(recipe.getId()));
             changes.add(new AddAxiom(ontology, dataFactory.getOWLObjectPropertyAssertionAxiom(dataFactory.getOWLObjectProperty(IRI.create(ontologyIRIStr + "hasRecipe")), mealPlanIndividual, recipeIndividual)));
             totalCalories += recipe.getCaloriesPer100gram();
         }
@@ -222,10 +224,57 @@ public class UserService {
         ontologyService.saveOntology();
     }
 
-    public List<Recipe> getMealPlan(String username) {
-        // TODO: Implement the method to retrieve the meal plan
-        return null;
+    public List<MealPlan> getMealPlans(String username) {
+        OWLNamedIndividual userIndividual = getCachedIndividual(username);
+        List<String> mealPlanIRIs = objectPropertyService.getObjectPropertyValues(userIndividual, "hasMealPlan");
+
+        List<MealPlan> mealPlans = new ArrayList<>();
+        for (String mpIRI : mealPlanIRIs) {
+            System.out.println(mpIRI);
+            OWLNamedIndividual mealPlanIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + mpIRI));
+            String mealPlanId = mealPlanIndividual.getIRI().toString();
+
+            String mealPlanName = dataPropertyService.getDataPropertyValue(mealPlanIndividual, "mealPlanName");
+            float totalCalories = dataPropertyService.getFloatValue(mealPlanIndividual, "hasTotalCalories");
+
+            List<String> recipeIRIs = objectPropertyService.getObjectPropertyValues(mealPlanIndividual, "hasRecipe");
+            List<String> recipes = new ArrayList<>();
+            for (String recipeIRI : recipeIRIs) {
+                OWLNamedIndividual recipeIndividual = dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + recipeIRI));
+                String recipeName = dataPropertyService.getDataPropertyValue(recipeIndividual, "recipeName");
+                if (recipeName == null || recipeName.isEmpty()) {
+                    String iriFragment = ontologyService.getFragment(recipeIRI);
+                    recipeName = iriFragment.replace('_', ' ');
+                }
+                recipes.add(recipeName);
+            }
+
+            mealPlans.add(new MealPlan(mealPlanId, mealPlanName, recipes, totalCalories));
+        }
+        return mealPlans;
     }
+    public void deleteMealPlan(String mealPlanIdFragment) {
+        // Construct the full IRI for the meal plan individual
+        IRI mealPlanIRI = IRI.create(ontologyIRIStr + mealPlanIdFragment);
+
+        // Retrieve the meal plan individual
+        OWLNamedIndividual mealPlanIndividual = dataFactory.getOWLNamedIndividual(mealPlanIRI);
+
+        // Check if the individual exists in the ontology
+        if (!ontology.containsIndividualInSignature(mealPlanIRI)) {
+            throw new CustomException("Meal Plan not found with ID: " + mealPlanIdFragment);
+        }
+
+        // Use OWLEntityRemover to remove the individual
+        OWLEntityRemover remover = new OWLEntityRemover(ontoManager, Collections.singleton(ontology));
+        mealPlanIndividual.accept(remover);
+        ontoManager.applyChanges(remover.getChanges());
+        ontologyService.saveOntology();
+
+        // Optionally, log or notify about the deletion
+        System.out.println("Deleted Meal Plan with ID: " + mealPlanIdFragment);
+    }
+
 
     private OWLNamedIndividual getCachedIndividual(String username) {
         return individualCache.computeIfAbsent(username, key -> dataFactory.getOWLNamedIndividual(IRI.create(ontologyIRIStr + key.replace(" ", "_"))));

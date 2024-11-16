@@ -62,6 +62,7 @@ public class UserAgent extends Agent {
             if (msg != null && msg.getPerformative() == ACLMessage.INFORM) {
                 String mealPlanContent = msg.getContent();
                 List<Recipe> mealPlan = convertContentToMealPlan(mealPlanContent);
+                assert mealPlan != null;
                 userService.saveMealPlan(user.getUsername(), mealPlan);
                 myAgent.doDelete();
             } else {
