@@ -2,6 +2,7 @@ package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import fit.health.fithealthapi.repository.FoodItemRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,12 +36,12 @@ public class FoodItemService {
 
         addDataProperties(foodItem);
 
-        inferDietaryPreferences(foodItem);
+        inferPreferences(foodItem);
 
         return Optional.of(foodItemRepository.save(foodItem));
     }
 
-    private void inferDietaryPreferences(FoodItem foodItem) {
+    private void inferPreferences(FoodItem foodItem) {
         Set<String> superClasses = ontologyService.getSuperClasses(foodItem.getName());
         Set<DietaryPreference> dietaryPreferences = superClasses.stream()
                 .filter(ontologyService::isDietaryPreference) // Use reusable method
@@ -48,6 +49,12 @@ public class FoodItemService {
                 .map(DietaryPreference::valueOf)
                 .collect(Collectors.toSet());
         foodItem.setDietaryPreferences(dietaryPreferences);
+        Set<HealthConditionSuitability> healthConditionSuitabilities = superClasses.stream()
+                .filter(ontologyService::isHealthConditionSuitability) // Use reusable method
+                .map(String::toUpperCase)
+                .map(HealthConditionSuitability::valueOf)
+                .collect(Collectors.toSet());
+        foodItem.setHealthConditionSuitability(healthConditionSuitabilities);
     }
 
     private void addDataProperties(FoodItem foodItem) {
@@ -55,6 +62,7 @@ public class FoodItemService {
         ontologyService.addDataPropertyRestriction(foodItem.getName(), "proteinContent", foodItem.getProteinContent());
         ontologyService.addDataPropertyRestriction(foodItem.getName(), "fatContent", foodItem.getFatContent());
         ontologyService.addDataPropertyRestriction(foodItem.getName(), "sugarContent", foodItem.getSugarContent());
+        ontologyService.addDataPropertyRestriction(foodItem.getName(), "saltContent", foodItem.getSaltContent());
 
         if (foodItem.getAllergens() != null && !foodItem.getAllergens().isEmpty()) {
             for (Allergen allergen : foodItem.getAllergens()) {
@@ -91,7 +99,6 @@ public class FoodItemService {
      */
     @Transactional
     public FoodItem updateFoodItem(Long id, FoodItem updatedFoodItem) {
-        // Fetch the existing FoodItem
         FoodItem existingFoodItem = foodItemRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("FoodItem not found"));
         String updatedName = updatedFoodItem.getName();
@@ -108,12 +115,13 @@ public class FoodItemService {
 
         addDataProperties(updatedFoodItem);
 
-        inferDietaryPreferences(updatedFoodItem);
+        inferPreferences(updatedFoodItem);
 
         existingFoodItem.setCaloriesPer100g(updatedFoodItem.getCaloriesPer100g());
         existingFoodItem.setFatContent(updatedFoodItem.getFatContent());
         existingFoodItem.setProteinContent(updatedFoodItem.getProteinContent());
         existingFoodItem.setSugarContent(updatedFoodItem.getSugarContent());
+        existingFoodItem.setSaltContent(updatedFoodItem.getSaltContent());
         existingFoodItem.setAllergens(new HashSet<>(updatedFoodItem.getAllergens()));
         existingFoodItem.setDietaryPreferences(new HashSet<>(updatedFoodItem.getDietaryPreferences()));
 
@@ -135,27 +143,6 @@ public class FoodItemService {
         foodItemRepository.deleteById(id);
     }
 
-    public List<DietaryPreference> convertToDietaryPreferences(List<String> preferences) {
-        List<DietaryPreference> dietaryPreferences = new ArrayList<>();
-        for (String preference : preferences) {
-            String normalizedPreference = preference.toUpperCase().replace(" ", "_");
-            if(ontologyService.isDietaryPreference(normalizedPreference)){
-                dietaryPreferences.add(DietaryPreference.valueOf(normalizedPreference));
-            }
-        }
-        return dietaryPreferences;
-    }
-
-    public List<Allergen> convertToAllergens(List<String> allergens) {
-        List<Allergen> allergenEnums = new ArrayList<>();
-        for (String allergen : allergens) {
-            String normalizedAllergen = allergen.toUpperCase().replace(" ", "_");
-            if(ontologyService.isAllergen(normalizedAllergen)){
-                allergenEnums.add(Allergen.valueOf(normalizedAllergen));
-            }
-        }
-        return allergenEnums;
-    }
 
     public List<FoodItem> findFoodItemsByPreferences(List<DietaryPreference> preferences) {
         List<FoodItem> allFoodItems = foodItemRepository.findAll();
@@ -180,4 +167,27 @@ public class FoodItemService {
         }
         return matchingFoodItems;
     }
+
+    public List<FoodItem> findFoodItemsByHealthConditions(List<HealthConditionSuitability> preferences) {
+        List<FoodItem> allFoodItems = foodItemRepository.findAll();
+        List<FoodItem> matchingFoodItems = new ArrayList<>();
+
+        for (FoodItem foodItem : allFoodItems) {
+            if (foodItem.getHealthConditionSuitability().containsAll(preferences)) {
+                matchingFoodItems.add(foodItem);
+            }
+        }
+        return matchingFoodItems;
+    }
+
+    public List<FoodItem> searchFoodItems(List<DietaryPreference> dietaryPreferences, List<Allergen> allergens, List<HealthConditionSuitability> healthConditions) {
+        List<FoodItem> allFoodItems = foodItemRepository.findAll();
+
+        return allFoodItems.stream()
+                .filter(foodItem -> foodItem.getDietaryPreferences().containsAll(dietaryPreferences)) // Match dietary preferences
+                .filter(foodItem -> Collections.disjoint(foodItem.getAllergens(), allergens)) // Exclude specified allergens
+                .filter(foodItem -> foodItem.getHealthConditionSuitability().containsAll(healthConditions)) // Match health conditions
+                .collect(Collectors.toList());
+    }
+
 }

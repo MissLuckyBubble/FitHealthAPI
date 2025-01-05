@@ -2,6 +2,7 @@ package fit.health.fithealthapi.model;
 
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,6 +38,9 @@ public class FoodItem {
     @Column(nullable = false)
     private Float sugarContent;
 
+    @Column(nullable = false)
+    private Float saltContent;
+
     @ElementCollection(targetClass = Allergen.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "food_item_allergens", joinColumns = @JoinColumn(name = "food_item_id"))
@@ -48,4 +52,10 @@ public class FoodItem {
     @CollectionTable(name = "food_item_preferences", joinColumns = @JoinColumn(name = "food_item_id"))
     @Column(name = "dietary_preference")
     private Set<DietaryPreference> dietaryPreferences = new HashSet<>();
+
+    @ElementCollection(targetClass = HealthConditionSuitability.class)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "food_item_HealthConditionSuitability", joinColumns = @JoinColumn(name = "food_item_id"))
+    @Column(name = "HealthConditionSuitability")
+    private Set<HealthConditionSuitability> healthConditionSuitability = new HashSet<>();
 }

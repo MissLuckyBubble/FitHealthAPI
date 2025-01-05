@@ -3,6 +3,8 @@ package fit.health.fithealthapi.services;
 
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.HealthCondition;
+import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import lombok.Getter;
 import org.semanticweb.HermiT.Reasoner;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -175,10 +177,22 @@ public class OntologyService {
     /**
      * Add a data property restriction to a class.
      */
-    public void addDataPropertyRestriction(String className, String propertyName, Float value) {
+    public void addDataPropertyRestriction(String className, String propertyName, Object value) {
         OWLClass targetClass = getOWLClass(className);
         OWLDataProperty dataProperty = dataFactory.getOWLDataProperty(IRI.create(ontologyIRI + propertyName));
-        OWLClassExpression restriction = dataFactory.getOWLDataHasValue(dataProperty, dataFactory.getOWLLiteral(value));
+        OWLLiteral literal;
+
+        if (value instanceof Integer) {
+            literal = dataFactory.getOWLLiteral((Integer) value);
+        } else if (value instanceof Float) {
+            literal = dataFactory.getOWLLiteral((Float) value);
+        } else if (value instanceof String) {
+            literal = dataFactory.getOWLLiteral((String) value);
+        } else {
+            throw new IllegalArgumentException("Unsupported data type for property value: " + value.getClass());
+        }
+
+        OWLClassExpression restriction = dataFactory.getOWLDataHasValue(dataProperty, literal);
 
         OWLAxiom axiom = dataFactory.getOWLSubClassOfAxiom(targetClass, restriction);
         ontologyManager.applyChange(new AddAxiom(ontology, axiom));
@@ -211,6 +225,24 @@ public class OntologyService {
     public boolean isAllergen(String className) {
         try {
             Allergen.valueOf(className.toUpperCase());
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public boolean isHealthConditionSuitability(String className){
+        try {
+            HealthConditionSuitability.valueOf(className.toUpperCase());
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public boolean isHealthCondition(String className){
+        try {
+            HealthCondition.valueOf(className.toUpperCase());
             return true;
         } catch (IllegalArgumentException e) {
             return false;

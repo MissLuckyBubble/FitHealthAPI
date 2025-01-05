@@ -37,5 +37,9 @@ public class SharedController {
         return ResponseEntity.ok(g);
     }
 
-
+    @GetMapping("/health-conditions-suitability")
+    public ResponseEntity<List<String>> getHealthConditionsSuitability(){
+        List<String> hc = sharedService.getAllHealthConditionsSuitability();
+        return ResponseEntity.ok(hc);
+    }
 }

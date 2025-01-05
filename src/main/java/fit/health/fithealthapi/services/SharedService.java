@@ -1,9 +1,7 @@
 package fit.health.fithealthapi.services;
 
-import fit.health.fithealthapi.model.enums.Allergen;
-import fit.health.fithealthapi.model.enums.DietaryPreference;
-import fit.health.fithealthapi.model.enums.Gender;
-import fit.health.fithealthapi.model.enums.HealthCondition;
+import fit.health.fithealthapi.model.enums.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,6 +9,9 @@ import java.util.List;
 
 @Service
 public class SharedService {
+    @Autowired
+    OntologyService ontologyService;
+
     public String convertToPascalCase(String input) {
         if(input == null || input.isBlank()){
             return input;
@@ -59,4 +60,59 @@ public class SharedService {
         }
         return result;
     }
+
+    HealthConditionSuitability mapToSuitability(HealthCondition condition) {
+        return switch (condition) {
+            case DIABETES -> HealthConditionSuitability.DIABETES_SAFE;
+            case HYPERTENSION -> HealthConditionSuitability.HYPERTENSION_SAFE;
+            case HEART_DISEASE -> HealthConditionSuitability.HEART_DISEASE_SAFE;
+            case KIDNEY_DISEASE -> HealthConditionSuitability.KIDNEY_DISEASE_SAFE;
+            case OBESITY -> HealthConditionSuitability.OBESITY_SAFE;
+            case GLUTEN_INTOLERANCE -> HealthConditionSuitability.GLUTEN_INTOLERANCE_SAFE;
+            default -> throw new IllegalArgumentException("Unknown condition: " + condition);
+        };
+    }
+    public List<String> getAllHealthConditionsSuitability(){
+        List<String> result = new ArrayList<>();
+        for(HealthConditionSuitability hc : HealthConditionSuitability.values()){
+            result.add(convertToPascalCase(hc.toString()).replace("_"," "));
+        }
+        return result;
+    }
+
+    public List<DietaryPreference> convertToDietaryPreferences(List<String> preferences) {
+        List<DietaryPreference> dietaryPreferences = new ArrayList<>();
+        for (String preference : preferences) {
+            String normalizedPreference = preference.toUpperCase().replace(" ", "_");
+            if(ontologyService.isDietaryPreference(normalizedPreference)){
+                dietaryPreferences.add(DietaryPreference.valueOf(normalizedPreference));
+            }
+        }
+        return dietaryPreferences;
+    }
+
+    public List<Allergen> convertToAllergens(List<String> allergens) {
+        List<Allergen> allergenEnums = new ArrayList<>();
+        for (String allergen : allergens) {
+            String normalizedAllergen = allergen.toUpperCase().replace(" ", "_");
+            if(ontologyService.isAllergen(normalizedAllergen)){
+                allergenEnums.add(Allergen.valueOf(normalizedAllergen));
+            }
+        }
+        return allergenEnums;
+    }
+
+    public List<HealthConditionSuitability> convertToHealthConditionSuitability(List<String> preferences) {
+        List<HealthConditionSuitability> healthConditionSuitabilities = new ArrayList<>();
+        for (String preference : preferences) {
+            String normalizedPreference = preference.toUpperCase().replace(" ", "_");
+            if(ontologyService.isHealthConditionSuitability(normalizedPreference)){
+                healthConditionSuitabilities.add(HealthConditionSuitability.valueOf(normalizedPreference));
+            }else if(ontologyService.isHealthCondition(normalizedPreference)){
+                healthConditionSuitabilities.add(mapToSuitability(HealthCondition.valueOf(normalizedPreference)));
+            }
+        }
+        return healthConditionSuitabilities;
+    }
+
 }

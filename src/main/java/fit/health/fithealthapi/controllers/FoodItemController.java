@@ -1,9 +1,12 @@
 package fit.health.fithealthapi.controllers;
 
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.dto.SearchRequest;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import fit.health.fithealthapi.services.FoodItemService;
+import fit.health.fithealthapi.services.SharedService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,9 @@ public class FoodItemController {
 
     @Autowired
     private FoodItemService foodService;
+    @Autowired
+    private SharedService sharedService;
+
     /**
      * Create a new FoodItem.
      *
@@ -107,15 +113,33 @@ public class FoodItemController {
 
     @PostMapping("/search/by-preferences")
     public ResponseEntity<List<FoodItem>> getFoodItemsByPreferences(@RequestBody List<String> preferences) {
-        List<DietaryPreference> dietaryPreferences = foodService.convertToDietaryPreferences(preferences);
+        List<DietaryPreference> dietaryPreferences = sharedService.convertToDietaryPreferences(preferences);
         List<FoodItem> matchingFoodItems = foodService.findFoodItemsByPreferences(dietaryPreferences);
         return ResponseEntity.ok(matchingFoodItems);
     }
 
     @PostMapping("/search/without-allergens")
     public ResponseEntity<List<FoodItem>> getFoodItemsWithoutAllergens(@RequestBody List<String> allergens) {
-        List<Allergen> allergenEnums = foodService.convertToAllergens(allergens);
+        List<Allergen> allergenEnums = sharedService.convertToAllergens(allergens);
         List<FoodItem> matchingFoodItems = foodService.findFoodItemsWithoutAllergens(allergenEnums);
+        return ResponseEntity.ok(matchingFoodItems);
+    }
+
+    @PostMapping("/search/health-condition")
+    public ResponseEntity<List<FoodItem>> getFoodItemsByHealthConditionSuitability (@RequestBody List<String> preferences) {
+        List<HealthConditionSuitability> healthConditionSuitabilities = sharedService.convertToHealthConditionSuitability(preferences);
+        List<FoodItem> matchingFoodItems = foodService.findFoodItemsByHealthConditions(healthConditionSuitabilities);
+        return ResponseEntity.ok(matchingFoodItems);
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<List<FoodItem>> searchFoodItems(@RequestBody SearchRequest searchRequest) {
+        List<DietaryPreference> dietaryPreferences = sharedService.convertToDietaryPreferences(searchRequest.getDietaryPreferences());
+        List<Allergen> allergens = sharedService.convertToAllergens(searchRequest.getAllergens());
+        List<HealthConditionSuitability> healthConditions = sharedService.convertToHealthConditionSuitability(searchRequest.getHealthConditions());
+
+        List<FoodItem> matchingFoodItems = foodService.searchFoodItems(dietaryPreferences, allergens, healthConditions);
+
         return ResponseEntity.ok(matchingFoodItems);
     }
 }
