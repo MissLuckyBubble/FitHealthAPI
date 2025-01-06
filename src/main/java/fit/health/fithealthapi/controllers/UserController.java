@@ -1,9 +1,15 @@
 package fit.health.fithealthapi.controllers;
 
+import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
+import fit.health.fithealthapi.exceptions.UserNotFoundException;
+import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.services.OntologyService;
+import fit.health.fithealthapi.model.dto.EditUserDTO;
+import fit.health.fithealthapi.model.dto.UserDTO;
+import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,36 +19,97 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private RecipeService recipeService;
 
-    @PostMapping
-    public ResponseEntity<String> createUser(@RequestBody User user) {
-        userService.createUser(user);
-        return ResponseEntity.ok("User created successfully");
+    @PostMapping("/register")
+    public ResponseEntity<?> createUser(@RequestBody UserDTO user) {
+        try {
+            User createdUser = userService.saveUser(user);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid user data: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
+        }
     }
 
-    @PutMapping
-    public ResponseEntity<String> editUser(@RequestBody User user, @RequestParam String oldPassword) {
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody EditUserDTO user) {
         try {
-            userService.editUser(user, oldPassword);
-            return ResponseEntity.ok("User updated successfully");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            User updatedUser = userService.updateUser(id, user);
+            return ResponseEntity.ok(updatedUser);
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid user data: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody UserDTO user) {
+        try {
+            User loggedInUser = userService.checkCredentials(user.getUsername(), user.getPassword());
+            return ResponseEntity.ok(loggedInUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> removeUser(@PathVariable String id) {
-        userService.removeUser(id);
-        return ResponseEntity.ok("User removed successfully");
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
+        }
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<User> loginUser(@RequestParam String username, @RequestParam String password) {
+    @PostMapping("/{userId}/favorite-recipes/{recipeId}")
+    public ResponseEntity<?> addFavoriteRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
         try {
-            User user = userService.loginUser(username, password);
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(null);
+            Recipe recipe = recipeService.getRecipeById(recipeId);
+
+            if (userService.addFavoriteRecipe(userId, recipe)) {
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body("Recipe with ID " + recipeId + " successfully added to user with ID " + userId + "'s favorites.");
+            }
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Recipe is already in the user's favorites");
+        } catch (RecipeNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found.");
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{userId}/favorite-recipes/{recipeId}")
+    public ResponseEntity<?> removeFavoriteRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
+        try {
+            Recipe recipe = recipeService.getRecipeById(recipeId);
+
+            if (userService.removeFavoriteRecipe(userId, recipe)) {
+                return ResponseEntity.ok("Recipe with ID " + recipeId + " successfully removed from user with ID " + userId + "'s favorites.");
+            }
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Recipe is not in the user's favorites.");
+        } catch (RecipeNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found.");
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
         }
     }
 }

@@ -420,8 +420,26 @@
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
         <rdfs:subClassOf>
             <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">34.0</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#sugarContent"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.7</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.82</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -434,24 +452,6 @@
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.1</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">34.0</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.82</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -500,17 +500,6 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Diabetes_Safe"/>
-                    </owl:Restriction>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
                     <owl:Class>
                         <owl:intersectionOf rdf:parseType="Collection">
@@ -518,6 +507,17 @@
                             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Low_Sugar"/>
                         </owl:intersectionOf>
                     </owl:Class>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Diabetes_Safe"/>
+                    </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -587,21 +587,6 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
-                    <owl:Class>
-                        <owl:complementOf>
-                            <owl:Restriction>
-                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten"/>
-                            </owl:Restriction>
-                        </owl:complementOf>
-                    </owl:Class>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
                     <owl:Restriction>
                         <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
@@ -624,6 +609,21 @@
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
+                    <owl:Class>
+                        <owl:complementOf>
+                            <owl:Restriction>
+                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten"/>
+                            </owl:Restriction>
+                        </owl:complementOf>
+                    </owl:Class>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#DietaryPreference"/>
     </owl:Class>
     
@@ -635,19 +635,19 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten_Free"/>
-                    </owl:Restriction>
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten_Free"/>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten_Free"/>
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten_Free"/>
+                    </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -668,17 +668,6 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Heart_Disease_Safe"/>
-                    </owl:Restriction>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
                     <owl:Class>
                         <owl:intersectionOf rdf:parseType="Collection">
@@ -686,6 +675,17 @@
                             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Low_Fat"/>
                         </owl:intersectionOf>
                     </owl:Class>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Heart_Disease_Safe"/>
+                    </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -768,17 +768,6 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#High_Protein"/>
-                    </owl:Restriction>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
                     <owl:Restriction>
                         <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
@@ -792,6 +781,17 @@
                                 </owl:withRestrictions>
                             </rdfs:Datatype>
                         </owl:someValuesFrom>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#High_Protein"/>
                     </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
@@ -895,6 +895,17 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Kidney_Disease_Safe"/>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
                     <owl:Class>
                         <owl:intersectionOf rdf:parseType="Collection">
@@ -924,17 +935,6 @@
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Kidney_Disease_Safe"/>
-                    </owl:Restriction>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#HealthCondition"/>
     </owl:Class>
     
@@ -943,21 +943,6 @@
     <!-- http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Lactose_Free -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Lactose_Free">
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
-                    <owl:Class>
-                        <owl:complementOf>
-                            <owl:Restriction>
-                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Dairy"/>
-                            </owl:Restriction>
-                        </owl:complementOf>
-                    </owl:Class>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
@@ -980,6 +965,21 @@
                             </owl:Class>
                         </owl:allValuesFrom>
                     </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
+                    <owl:Class>
+                        <owl:complementOf>
+                            <owl:Restriction>
+                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Dairy"/>
+                            </owl:Restriction>
+                        </owl:complementOf>
+                    </owl:Class>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -1154,6 +1154,17 @@
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
+                    <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Obesity_Safe"/>
+                    </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
                     <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
                     <owl:Class>
                         <owl:intersectionOf rdf:parseType="Collection">
@@ -1162,17 +1173,6 @@
                             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Low_Sugar"/>
                         </owl:intersectionOf>
                     </owl:Class>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                        <owl:allValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Obesity_Safe"/>
-                    </owl:Restriction>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -1218,14 +1218,14 @@
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">350.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">12.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">350.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1236,20 +1236,20 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.5</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.03</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1.5</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">12.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -1313,26 +1313,8 @@
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Recipe"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.09</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#description"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Add Boiled Pasta and fresh Tomato</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#cookingTime"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">15</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">4.8</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Pasta"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1343,26 +1325,32 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.09</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">4.8</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#servingSize"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">5</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#cookingTime"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">15</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Pasta"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#preparationTime"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">20</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#totalCalories"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1077.0</owl:hasValue>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Tomato"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1373,8 +1361,20 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasIngredient"/>
-                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Tomato"/>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#totalCalories"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">1077.0</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#preparationTime"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">20</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#description"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Add Boiled Pasta and fresh Tomato</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -1413,6 +1413,10 @@
                         <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">25.8</owl:hasValue>
                     </owl:Restriction>
                     <owl:Restriction>
+                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
+                        <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.0</owl:hasValue>
+                    </owl:Restriction>
+                    <owl:Restriction>
                         <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#sugarContent"/>
                         <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">4.2</owl:hasValue>
                     </owl:Restriction>
@@ -1440,10 +1444,6 @@
                         <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">25.8</owl:hasValue>
                     </owl:Restriction>
                     <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
-                        <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.0</owl:hasValue>
-                    </owl:Restriction>
-                    <owl:Restriction>
                         <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#sugarContent"/>
                         <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">4.2</owl:hasValue>
                     </owl:Restriction>
@@ -1453,8 +1453,8 @@
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">49.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1471,8 +1471,8 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">567.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#fatContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">49.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1483,8 +1483,8 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">2.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">567.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -1558,20 +1558,8 @@
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">18.0</owl:hasValue>
-            </owl:Restriction>
-        </rdfs:subClassOf>
-        <rdfs:subClassOf>
-            <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.9</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1582,8 +1570,20 @@
         </rdfs:subClassOf>
         <rdfs:subClassOf>
             <owl:Restriction>
-                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#proteinContent"/>
-                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.9</owl:hasValue>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#saltContent"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">0.0</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#caloriesPer100gram"/>
+                <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#float">18.0</owl:hasValue>
             </owl:Restriction>
         </rdfs:subClassOf>
         <rdfs:subClassOf>
@@ -1599,21 +1599,6 @@
     <!-- http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Vegan -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Vegan">
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
-                    <owl:Class>
-                        <owl:complementOf>
-                            <owl:Restriction>
-                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
-                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Animal_Product"/>
-                            </owl:Restriction>
-                        </owl:complementOf>
-                    </owl:Class>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
         <owl:equivalentClass>
             <owl:Class>
                 <owl:intersectionOf rdf:parseType="Collection">
@@ -1636,6 +1621,21 @@
                             </owl:Class>
                         </owl:allValuesFrom>
                     </owl:Restriction>
+                </owl:intersectionOf>
+            </owl:Class>
+        </owl:equivalentClass>
+        <owl:equivalentClass>
+            <owl:Class>
+                <owl:intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#FoodItem"/>
+                    <owl:Class>
+                        <owl:complementOf>
+                            <owl:Restriction>
+                                <owl:onProperty rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#hasAllergen"/>
+                                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Animal_Product"/>
+                            </owl:Restriction>
+                        </owl:complementOf>
+                    </owl:Class>
                 </owl:intersectionOf>
             </owl:Class>
         </owl:equivalentClass>
@@ -1752,14 +1752,6 @@
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
         <owl:members rdf:parseType="Collection">
             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Animal_Product"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Plant_based"/>
-        </owl:members>
-    </rdf:Description>
-    <rdf:Description>
-        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
-        <owl:members rdf:parseType="Collection">
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Dairy"/>
             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Eggs"/>
             <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Gluten"/>
@@ -1771,19 +1763,27 @@
     <rdf:Description>
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
         <owl:members rdf:parseType="Collection">
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Dairy"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Eggs"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Meat"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Shellfish"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminA"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminB"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminC"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminD"/>
         </owl:members>
     </rdf:Description>
     <rdf:Description>
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
         <owl:members rdf:parseType="Collection">
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminA"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminB"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminC"/>
-            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#VitaminD"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Allergen_Free"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Animal_Product"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Plant_based"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Dairy"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Eggs"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Meat"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/missluckybubble/ontologies/2024/4/Health#Shellfish"/>
         </owl:members>
     </rdf:Description>
 </rdf:RDF>
