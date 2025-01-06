@@ -1,0 +1,6 @@
+Consistent Status Codes:
+
+201 Created for successful resource creation.
+404 Not Found for missing users or recipes.
+400 Bad Request for invalid data or business logic errors.
+500 Internal Server Error for unexpected exceptions.
