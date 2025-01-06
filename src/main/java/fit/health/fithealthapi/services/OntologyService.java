@@ -1,6 +1,7 @@
 
 package fit.health.fithealthapi.services;
 
+import fit.health.fithealthapi.model.dto.InferredPreferences;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthCondition;
@@ -178,6 +179,11 @@ public class OntologyService {
      * Add a data property restriction to a class.
      */
     public void addDataPropertyRestriction(String className, String propertyName, Object value) {
+        if (value == null) {
+            LOGGER.warning("Value for property " + propertyName + " is null. Skipping data property restriction.");
+            return;
+        }
+
         OWLClass targetClass = getOWLClass(className);
         OWLDataProperty dataProperty = dataFactory.getOWLDataProperty(IRI.create(ontologyIRI + propertyName));
         OWLLiteral literal;
@@ -343,4 +349,28 @@ public class OntologyService {
             return Collections.emptySet();
         }
     }
+
+    /**
+     * Infers dietary preferences and health condition suitabilities for a given class name.
+     * @param className The name of the class in the ontology.
+     * @return An InferredPreferences object containing the inferred preferences.
+     */
+    public InferredPreferences inferPreferences(String className) {
+        Set<String> superClasses = this.getSuperClasses(className);
+
+        Set<DietaryPreference> dietaryPreferences = superClasses.stream()
+                .filter(this::isDietaryPreference)
+                .map(String::toUpperCase)
+                .map(DietaryPreference::valueOf)
+                .collect(Collectors.toSet());
+
+        Set<HealthConditionSuitability> healthConditionSuitabilities = superClasses.stream()
+                .filter(this::isHealthConditionSuitability)
+                .map(String::toUpperCase)
+                .map(HealthConditionSuitability::valueOf)
+                .collect(Collectors.toSet());
+
+        return new InferredPreferences(dietaryPreferences, healthConditionSuitabilities);
+    }
+
 }

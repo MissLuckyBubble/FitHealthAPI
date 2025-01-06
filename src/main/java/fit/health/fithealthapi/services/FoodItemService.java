@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.dto.InferredPreferences;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
@@ -42,19 +43,9 @@ public class FoodItemService {
     }
 
     private void inferPreferences(FoodItem foodItem) {
-        Set<String> superClasses = ontologyService.getSuperClasses(foodItem.getName());
-        Set<DietaryPreference> dietaryPreferences = superClasses.stream()
-                .filter(ontologyService::isDietaryPreference) // Use reusable method
-                .map(String::toUpperCase)
-                .map(DietaryPreference::valueOf)
-                .collect(Collectors.toSet());
-        foodItem.setDietaryPreferences(dietaryPreferences);
-        Set<HealthConditionSuitability> healthConditionSuitabilities = superClasses.stream()
-                .filter(ontologyService::isHealthConditionSuitability) // Use reusable method
-                .map(String::toUpperCase)
-                .map(HealthConditionSuitability::valueOf)
-                .collect(Collectors.toSet());
-        foodItem.setHealthConditionSuitability(healthConditionSuitabilities);
+        InferredPreferences inferredPreferences = ontologyService.inferPreferences(foodItem.getName());
+        foodItem.setDietaryPreferences(inferredPreferences.getDietaryPreferences());
+        foodItem.setHealthConditionSuitability(inferredPreferences.getHealthConditionSuitabilities());
     }
 
     private void addDataProperties(FoodItem foodItem) {
@@ -188,6 +179,10 @@ public class FoodItemService {
                 .filter(foodItem -> Collections.disjoint(foodItem.getAllergens(), allergens)) // Exclude specified allergens
                 .filter(foodItem -> foodItem.getHealthConditionSuitability().containsAll(healthConditions)) // Match health conditions
                 .collect(Collectors.toList());
+    }
+
+    public Optional<FoodItem> findByName(String name) {
+        return foodItemRepository.findByName(name);
     }
 
 }

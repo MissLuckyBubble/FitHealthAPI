@@ -32,6 +32,13 @@ public class SharedService {
         return result.toString();
     }
 
+    public String convertToOntologyCase(String input) {
+        if(input == null || input.isBlank()){
+            return input;
+        }
+        return convertToPascalCase(input).replaceAll("\\s+", "_");
+    }
+
     public List<String> getDietaryPreferences() {
         List<String> result = new ArrayList<>();
         for(DietaryPreference preference : DietaryPreference.values()){
