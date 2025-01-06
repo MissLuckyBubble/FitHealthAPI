@@ -1,64 +1,145 @@
 package fit.health.fithealthapi.controllers;
 
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.dto.SearchRequest;
+import fit.health.fithealthapi.model.enums.Allergen;
+import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import fit.health.fithealthapi.services.FoodItemService;
-import fit.health.fithealthapi.services.OntologyService;
+import fit.health.fithealthapi.services.SharedService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/food/items")
+@RequestMapping("/food-items")
 public class FoodItemController {
 
     @Autowired
-    private FoodItemService foodItemService;
+    private FoodItemService foodService;
     @Autowired
-    private OntologyService ontologyService;
+    private SharedService sharedService;
 
-    @GetMapping
-    public ResponseEntity<List<FoodItem>> getFoodItems() {
-        List<FoodItem> foodItems = foodItemService.getFoodItems();
-        return ResponseEntity.ok(foodItems);
-    }
-
-    @GetMapping("/preferences")
-    public ResponseEntity<List<String>> getDietaryPreferences() {
-        List<String> dietaryPreferences = ontologyService.getDietaryPreferences();
-        return ResponseEntity.ok(dietaryPreferences);
-    }
-
-    @GetMapping("/by-preference")
-    public ResponseEntity<List<FoodItem>> getFoodItemsByPreference(@RequestParam String preference) {
-        List<FoodItem> foodItems = foodItemService.getFoodItemsByPreference(preference);
-        return ResponseEntity.ok(foodItems);
-    }
-
-    @PostMapping("/by-preferences")
-    public ResponseEntity<List<FoodItem>> getFoodItemsByPreferences(@RequestBody List<String> preferences) {
-        List<FoodItem> foodItems = foodItemService.getFoodItemsByPreferences(preferences);
-        return ResponseEntity.ok(foodItems);
-    }
-
-
+    /**
+     * Create a new FoodItem.
+     *
+     *
+     * @param foodItem The FoodItem object to create.
+     * @return The created FoodItem with dietary preferences populated.
+     */
     @PostMapping
-    public ResponseEntity<String> createFoodItem(@RequestBody FoodItem foodItem) {
-        foodItemService.createFoodItem(foodItem);
-        return ResponseEntity.ok("Food item created successfully");
+    public ResponseEntity<?> createFoodItem(@RequestBody FoodItem foodItem) {
+        Optional<FoodItem> savedItem = foodService.saveFoodItem(foodItem);
+
+        if (savedItem.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                            "error", "Food item already exists",
+                            "linkedOntologyClass", foodItem.getName()
+                    ));
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedItem.get());
     }
 
+    /**
+     * Get all FoodItems.
+     *
+     * @return List of all FoodItems.
+     */
+    @GetMapping
+    public ResponseEntity<List<FoodItem>> getAllFoodItems() {
+        List<FoodItem> foodItems = foodService.getAllFoodItems();
+        return ResponseEntity.ok(foodItems);
+    }
+
+    /**
+     * Get a FoodItem by ID.
+     *
+     * @param id The ID of the FoodItem to retrieve.
+     * @return The requested FoodItem.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<FoodItem> getFoodItemById(@PathVariable Long id) {
+        return foodService.getAllFoodItems().stream()
+                .filter(foodItem -> foodItem.getId().equals(id))
+                .findFirst()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Update an existing FoodItem.
+     *
+     * @param id The ID of the FoodItem to update.
+     * @param updatedFoodItem The updated FoodItem object.
+     * @return The updated FoodItem.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<String> updateFoodItem(@PathVariable String id, @RequestBody FoodItem foodItem) {
-        foodItem.setId(id);
-        foodItemService.editFoodItem(foodItem);
-        return ResponseEntity.ok("Food item updated successfully");
+    public ResponseEntity<FoodItem> updateFoodItem(
+            @PathVariable Long id,
+            @RequestBody FoodItem updatedFoodItem) {
+        try {
+            FoodItem foodItem = foodService.updateFoodItem(id, updatedFoodItem);
+            return ResponseEntity.ok(foodItem);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        } catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
+    /**
+     * Delete a FoodItem by ID.
+     *
+     * @param id The ID of the FoodItem to delete.
+     * @return ResponseEntity indicating the result of the operation.
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteFoodItem(@PathVariable String id) {
-        foodItemService.removeFoodItem(id);
-        return ResponseEntity.ok("Food item deleted successfully");
+    public ResponseEntity<Void> deleteFoodItem(@PathVariable Long id) {
+        try {
+            foodService.deleteFoodItem(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @PostMapping("/search/by-preferences")
+    public ResponseEntity<List<FoodItem>> getFoodItemsByPreferences(@RequestBody List<String> preferences) {
+        List<DietaryPreference> dietaryPreferences = sharedService.convertToDietaryPreferences(preferences);
+        List<FoodItem> matchingFoodItems = foodService.findFoodItemsByPreferences(dietaryPreferences);
+        return ResponseEntity.ok(matchingFoodItems);
+    }
+
+    @PostMapping("/search/without-allergens")
+    public ResponseEntity<List<FoodItem>> getFoodItemsWithoutAllergens(@RequestBody List<String> allergens) {
+        List<Allergen> allergenEnums = sharedService.convertToAllergens(allergens);
+        List<FoodItem> matchingFoodItems = foodService.findFoodItemsWithoutAllergens(allergenEnums);
+        return ResponseEntity.ok(matchingFoodItems);
+    }
+
+    @PostMapping("/search/health-condition")
+    public ResponseEntity<List<FoodItem>> getFoodItemsByHealthConditionSuitability (@RequestBody List<String> preferences) {
+        List<HealthConditionSuitability> healthConditionSuitabilities = sharedService.convertToHealthConditionSuitability(preferences);
+        List<FoodItem> matchingFoodItems = foodService.findFoodItemsByHealthConditions(healthConditionSuitabilities);
+        return ResponseEntity.ok(matchingFoodItems);
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<List<FoodItem>> searchFoodItems(@RequestBody SearchRequest searchRequest) {
+        List<DietaryPreference> dietaryPreferences = sharedService.convertToDietaryPreferences(searchRequest.getDietaryPreferences());
+        List<Allergen> allergens = sharedService.convertToAllergens(searchRequest.getAllergens());
+        List<HealthConditionSuitability> healthConditions = sharedService.convertToHealthConditionSuitability(searchRequest.getHealthConditions());
+
+        List<FoodItem> matchingFoodItems = foodService.searchFoodItems(dietaryPreferences, allergens, healthConditions);
+
+        return ResponseEntity.ok(matchingFoodItems);
     }
 }
