@@ -5,7 +5,7 @@ import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.EditUserDTO;
 import fit.health.fithealthapi.model.dto.UserDTO;
-import fit.health.fithealthapi.model.enums.DietaryPreference;
+import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -32,6 +31,7 @@ public class UserService {
         User createdUser = new User();
         createdUser.setPassword(hashPassword(user.getPassword()));
         createdUser.setUsername(user.getUsername());
+        createdUser.setRole(Role.USER);
         return userRepository.save(createdUser);
     }
 
@@ -104,8 +104,16 @@ public class UserService {
     }
 
     public void deleteUser(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
+        userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
         userRepository.deleteById(id);
+    }
+
+    public Optional<User> getUserById(Long userId){
+        return userRepository.findById(userId);
+    }
+
+    public User getUserByUsername(String currentUsername) {
+        return userRepository.findByUsername(currentUsername).orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 }
 
