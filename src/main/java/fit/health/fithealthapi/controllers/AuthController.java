@@ -1,7 +1,9 @@
 package fit.health.fithealthapi.controllers;
 
+import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.JwtResponse;
 import fit.health.fithealthapi.model.dto.UserDTO;
+import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.UserService;
 import fit.health.fithealthapi.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,19 +26,6 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Autowired
-    private UserService userService;
-
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody UserDTO userDTO) {
-        try {
-            userService.saveUser(userDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
-        }
-    }
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserDTO userDTO) {
         try {
@@ -50,4 +39,5 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }
     }
+
 }

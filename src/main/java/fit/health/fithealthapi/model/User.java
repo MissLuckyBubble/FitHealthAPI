@@ -1,8 +1,6 @@
 package fit.health.fithealthapi.model;
 
-import fit.health.fithealthapi.model.enums.DietaryPreference;
-import fit.health.fithealthapi.model.enums.HealthCondition;
-import fit.health.fithealthapi.model.enums.Gender;
+import fit.health.fithealthapi.model.enums.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -48,6 +46,12 @@ public class User {
     @Column(name = "health_condition")
     private Set<HealthCondition> healthConditions = new HashSet<>();
 
+    @ElementCollection(targetClass = Allergen.class)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_allergen", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "allergens")
+    private Set<Allergen> allergens = new HashSet<>();
+
     @ManyToMany
     @JoinTable(
             name = "user_favorite_recipes",
@@ -55,4 +59,7 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "recipe_id")
     )
     private Set<Recipe> favoriteRecipes = new HashSet<>();
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
 }

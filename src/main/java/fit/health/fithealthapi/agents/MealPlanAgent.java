@@ -65,7 +65,7 @@ public class MealPlanAgent extends Agent {
             // First, collect all valid recipes that fit the criteria
             List<Recipe> validRecipes = new ArrayList<>();
             for (Recipe recipe : recipes) {
-                if (recipe.getCaloriesPer100gram() <= dailyCalorieGoal) {
+                if (recipe.getCalories() <= dailyCalorieGoal) {
                     validRecipes.add(recipe);
                 }
             }
@@ -77,7 +77,7 @@ public class MealPlanAgent extends Agent {
                 }
                 Recipe selectedRecipe = validRecipes.get(i % validRecipes.size());
                 mealPlan.add(selectedRecipe);
-                totalCalories += selectedRecipe.getCaloriesPer100gram();
+                totalCalories += selectedRecipe.getCalories();
             }
 
 

@@ -274,7 +274,6 @@ public class OntologyService {
         Set<OWLSubClassOfAxiom> axiomsToRemove = ontology.getAxioms(owlClass).stream()
                 .filter(axiom -> axiom.isOfType(AxiomType.SUBCLASS_OF))
                 .map(axiom -> (OWLSubClassOfAxiom) axiom)
-                .filter(axiom -> axiom.getSuperClass() instanceof OWLObjectSomeValuesFrom)
                 .collect(Collectors.toSet());
 
         for (OWLSubClassOfAxiom axiom : axiomsToRemove) {
