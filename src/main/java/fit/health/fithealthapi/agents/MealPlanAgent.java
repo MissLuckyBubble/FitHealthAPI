@@ -4,39 +4,34 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
+import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
+import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MealPlanAgent extends Agent {
 
     private UserService userService;
     private RecipeService recipeService;
-    private User user;
-    private List<Recipe> recipes;
-    private int numberOfMeals;
-    private int numberOfDays;
 
     public MealPlanAgent() {
         // Default constructor for JADE
     }
 
-    public void init(UserService userService, RecipeService recipeService, User user, List<Recipe> recipes, int numberOfMeals, int numberOfDays) {
+    public void init(UserService userService, RecipeService recipeService) {
         this.userService = userService;
         this.recipeService = recipeService;
-        this.user = user;
-        this.recipes = recipes;
-        this.numberOfMeals = numberOfMeals;
-        this.numberOfDays = numberOfDays;
     }
 
     @Override
     protected void setup() {
+        System.out.println(getLocalName() + " started.");
         addBehaviour(new GenerateMealPlanBehaviour());
     }
 
@@ -45,53 +40,54 @@ public class MealPlanAgent extends Agent {
         public void action() {
             ACLMessage msg = myAgent.receive();
             if (msg != null && msg.getPerformative() == ACLMessage.REQUEST) {
-                List<Recipe> mealPlan = generateMealPlan(user, recipes);
+                String[] parts = msg.getContent().split(";");
+                Long userId = Long.parseLong(parts[0]);
+                Set<RecipeType> recipeTypes = extractMealTypes(parts[1]);
+                User user = userService.getUserById(userId);
+                List<Recipe> recommendedMeals = generateMealPlan(user, recipeTypes);
                 ACLMessage reply = msg.createReply();
                 reply.setPerformative(ACLMessage.INFORM);
-                reply.setContent(convertMealPlanToContent(mealPlan));
+                reply.setContent(serializeMealPlan(recommendedMeals));
                 myAgent.send(reply);
-                myAgent.doDelete(); // Terminate the agent after sending the reply
             } else {
                 block();
             }
         }
 
-        private List<Recipe> generateMealPlan(User user, List<Recipe> recipes) {
-            List<Recipe> mealPlan = new ArrayList<>();
-            double totalCalories = 0;
-            double dailyCalorieGoal = user.getDailyCalorieGoal();
-            int totalMeals = numberOfMeals * numberOfDays;
-
-            // First, collect all valid recipes that fit the criteria
-            List<Recipe> validRecipes = new ArrayList<>();
-            for (Recipe recipe : recipes) {
-                if (recipe.getCalories() <= dailyCalorieGoal) {
-                    validRecipes.add(recipe);
-                }
+        private Set<RecipeType> extractMealTypes(String mealTypeString) {
+            Set<RecipeType> mealTypes = new HashSet<>();
+            for (String type : mealTypeString.replace("[", "").replace("]", "").split(",")) {
+                mealTypes.add(RecipeType.valueOf(type.trim().toUpperCase()));
             }
-
-            // Use the valid recipes to create the meal plan
-            for (int i = 0; i < totalMeals; i++) {
-                if (validRecipes.isEmpty()) {
-                    break;
-                }
-                Recipe selectedRecipe = validRecipes.get(i % validRecipes.size());
-                mealPlan.add(selectedRecipe);
-                totalCalories += selectedRecipe.getCalories();
-            }
-
-
-            return mealPlan;
+            return mealTypes;
         }
 
-        private String convertMealPlanToContent(List<Recipe> mealPlan) {
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                return mapper.writeValueAsString(mealPlan);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-                return "";
+        private List<Recipe> generateMealPlan(User user, Set<RecipeType> recipeTypes) {
+            float remainingCalories = user.getDailyCalorieGoal();
+            List<Recipe> selectedMeals = new ArrayList<>();
+
+            for (RecipeType type : recipeTypes) {
+                RecipeSearchRequest searchRequest = new RecipeSearchRequest();
+                searchRequest.setDietaryPreferences(user.getDietaryPreferences().stream().toList());
+                searchRequest.setAllergens(user.getAllergens().stream().toList());
+                searchRequest.setRecipeTypes(Collections.singletonList(type));
+                searchRequest.setMaxCalories(remainingCalories); // Ensure calories fit
+                searchRequest.setGoal(user.getGoal());
+                List<Recipe> filteredRecipes = recipeService.searchRecipes(searchRequest);
+
+                if (!filteredRecipes.isEmpty()) {
+                    Recipe selected = filteredRecipes.get(0);
+                    selectedMeals.add(selected);
+                    remainingCalories -= selected.getCalories();
+                }
             }
+            return selectedMeals;
+        }
+
+        private String serializeMealPlan(List<Recipe> recipes) {
+            return recipes.stream()
+                    .map(recipe -> String.valueOf(recipe.getId())) // Convert ID to String
+                    .collect(Collectors.joining(",")); // Join with commas
         }
     }
 

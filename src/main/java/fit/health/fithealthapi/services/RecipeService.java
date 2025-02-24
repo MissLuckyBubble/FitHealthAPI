@@ -7,10 +7,7 @@ import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.RecipeIngredient;
 import fit.health.fithealthapi.model.dto.InferredPreferences;
 import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
-import fit.health.fithealthapi.model.enums.Allergen;
-import fit.health.fithealthapi.model.enums.DietaryPreference;
-import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
-import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.repository.RecipeRepository;
 import fit.health.fithealthapi.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -53,7 +50,7 @@ public class RecipeService {
 
     @Transactional
     public Recipe saveRecipe(Recipe recipe) {
-        String ontName = sharedService.convertToOntoCase(recipe.getName() + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()));
+        String ontName = sharedService.convertToOntoCase(recipe.getName() + new SimpleDateFormat("yyyyHHmmss").format(new java.util.Date()));
         recipe.setOntologyLinkedName(ontName);
         calculateNutritionalValues(recipe);
         addRecipeToOntology(recipe);
@@ -157,10 +154,10 @@ public class RecipeService {
         ontologyService.addDataPropertyRestriction(recipeName, "cookingTime", recipe.getCookingTime());
         ontologyService.addDataPropertyRestriction(recipeName, "servingSize", recipe.getServingSize());
         ontologyService.addDataPropertyRestriction(recipeName, "totalCalories", recipe.getCalories());
-        ontologyService.addDataPropertyRestriction(recipeName, "fatContent", recipe.getFatContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "proteinContent", recipe.getProteinContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "saltContent", recipe.getSaltContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "sugarContent", recipe.getSugarContent());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalFat", recipe.getFatContent());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalProtein", recipe.getProteinContent());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalSalt", recipe.getSaltContent());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalSugar", recipe.getSugarContent());
 
         if (recipe.getDescription() != null) {
             ontologyService.addDataPropertyRestriction(recipeName, "description", recipe.getDescription());
@@ -168,9 +165,11 @@ public class RecipeService {
     }
 
     private void addIngredientsToOntology(Recipe recipe, String recipeName) {
+        List<String> ingredientsNames = new ArrayList<>();
         for (RecipeIngredient ingredient : recipe.getIngredients()) {
-            ontologyService.addObjectPropertyRestriction(recipeName, "hasIngredient", ingredient.getFoodItem().getOntologyLinkedName());
+            ingredientsNames.add(ingredient.getFoodItem().getOntologyLinkedName());
         }
+        ontologyService.addIngredientsAsOnlyUnionRestriction(recipeName, ingredientsNames);
     }
 
     private void updateRecipeFields(Recipe existingRecipe, Recipe updatedRecipe) {
@@ -240,12 +239,27 @@ public class RecipeService {
                 .filter(recipe -> withinTime(recipe, searchRequest.getMaxTotalTime()))
                 .filter(recipe -> matchesName(recipe, searchRequest.getName()))
                 .filter(recipe -> matchesRecipeTypes(recipe, searchRequest.getRecipeTypes()))
-                .sorted(Comparator
-                        .comparing(Recipe::getCalories, Comparator.nullsLast(Float::compare))
-                        .thenComparing((r -> r.getPreparationTime() + r.getCookingTime()), Comparator.nullsLast(Integer::compare))
-                        .thenComparing(recipe -> getFavoriteCount(recipe.getId()), Comparator.reverseOrder()))
+                .sorted(getRecipeComparator(searchRequest.getGoal()))
                 .collect(Collectors.toList());
+
     }
+
+    private Comparator<Recipe> getRecipeComparator(Goal goal) {
+        Comparator<Recipe> calorieComparator;
+
+        if (goal == Goal.GAIN_SLOW || goal == Goal.GAIN_FAST) {
+            // ✅ High-calorie recipes first for weight gain
+            calorieComparator = Comparator.comparing(Recipe::getCalories, Comparator.nullsLast(Float::compare)).reversed();
+        } else {
+            // ✅ Default: Low-calorie recipes first for weight loss
+            calorieComparator = Comparator.comparing(Recipe::getCalories, Comparator.nullsLast(Float::compare));
+        }
+
+        return calorieComparator
+                .thenComparing((r -> r.getPreparationTime() + r.getCookingTime()), Comparator.nullsLast(Integer::compare))
+                .thenComparing(recipe -> getFavoriteCount(recipe.getId()), Comparator.reverseOrder());
+    }
+
 
     public int getFavoriteCount(Long recipeId) {
         return userRepository.countUsersByFavoriteRecipeId(recipeId);

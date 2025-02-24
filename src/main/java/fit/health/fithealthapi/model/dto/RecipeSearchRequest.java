@@ -1,9 +1,6 @@
 package fit.health.fithealthapi.model.dto;
 
-import fit.health.fithealthapi.model.enums.Allergen;
-import fit.health.fithealthapi.model.enums.DietaryPreference;
-import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
-import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.model.enums.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,4 +21,5 @@ public class RecipeSearchRequest {
     private Float maxCalories;
     private Float maxTotalTime;
     private Integer limit = 10;
+    private Goal goal;
 }

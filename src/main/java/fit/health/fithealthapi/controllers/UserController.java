@@ -7,7 +7,7 @@ import fit.health.fithealthapi.exceptions.UserNotFoundException;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.EditUserDTO;
-import fit.health.fithealthapi.model.dto.UserDTO;
+import fit.health.fithealthapi.model.dto.LoginUserDTO;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
@@ -37,7 +36,7 @@ public class UserController {
     private RecipeService recipeService;
 
     @PostMapping()
-    public ResponseEntity<?> registerUser(@RequestBody UserDTO userDTO) {
+    public ResponseEntity<?> registerUser(@RequestBody LoginUserDTO userDTO) {
         try {
             User user = userService.saveUser(userDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(user);

@@ -1,10 +1,7 @@
 package fit.health.fithealthapi.controllers;
 
-import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.JwtResponse;
-import fit.health.fithealthapi.model.dto.UserDTO;
-import fit.health.fithealthapi.model.enums.Role;
-import fit.health.fithealthapi.services.UserService;
+import fit.health.fithealthapi.model.dto.LoginUserDTO;
 import fit.health.fithealthapi.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -27,7 +24,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserDTO userDTO) {
+    public ResponseEntity<?> login(@RequestBody LoginUserDTO userDTO) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userDTO.getUsername(), userDTO.getPassword())

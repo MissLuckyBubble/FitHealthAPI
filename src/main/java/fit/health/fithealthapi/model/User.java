@@ -34,19 +34,19 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @ElementCollection(targetClass = DietaryPreference.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = DietaryPreference.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "user_dietary_preferences", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "dietary_preference")
     private Set<DietaryPreference> dietaryPreferences = new HashSet<>();
 
-    @ElementCollection(targetClass = HealthCondition.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = HealthCondition.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "user_health_conditions", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "health_condition")
     private Set<HealthCondition> healthConditions = new HashSet<>();
 
-    @ElementCollection(targetClass = Allergen.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = Allergen.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "user_allergen", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "allergens")
@@ -62,4 +62,10 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    private ActivityLevel activityLevel;
+
+    @Enumerated(EnumType.STRING)
+    private Goal goal;
 }

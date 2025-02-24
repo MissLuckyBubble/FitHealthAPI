@@ -64,25 +64,25 @@ public class Recipe {
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<RecipeIngredient> ingredients = new HashSet<>();
 
-    @ElementCollection(targetClass = DietaryPreference.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = DietaryPreference.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "recipe_preferences", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "dietary_preference")
     private Set<DietaryPreference> dietaryPreferences = new HashSet<>();
 
-    @ElementCollection(targetClass = HealthConditionSuitability.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = HealthConditionSuitability.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "recipe_conditions", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "health_condition_suitability")
     private Set<HealthConditionSuitability> healthConditionSuitability = new HashSet<>();
 
-    @ElementCollection(targetClass = Allergen.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = Allergen.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "recipe_allergens", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "allergens")
     private Set<Allergen> allergens = new HashSet<>();
 
-    @ElementCollection(targetClass = RecipeType.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = RecipeType.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "recipe_types", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "recipe_type")

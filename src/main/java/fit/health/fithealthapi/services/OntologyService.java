@@ -217,6 +217,56 @@ public class OntologyService {
         ontologyManager.applyChange(new AddAxiom(ontology, axiom));
     }
 
+    public void addIngredientsAsOnlyUnionRestriction(
+            String recipeClassName,
+            List<String> ingredientClassNames
+    ) {
+        // 1) Get the recipe class (e.g., #CarrotPotatoSoup)
+        OWLClass recipeClass = dataFactory.getOWLClass(
+                IRI.create(ontologyIRI + recipeClassName)
+        );
+
+        // 2) Hardcoded object property (hasIngredient)
+        OWLObjectProperty hasIngredient = dataFactory.getOWLObjectProperty(
+                IRI.create(ontologyIRI + "hasIngredient")
+        );
+
+        // 3) Build the union of all ingredient classes:
+        //    (IngredientClass1 OR IngredientClass2 OR ...)
+        Set<OWLClassExpression> ingredientClassExprs = new HashSet<>();
+        for (String ing : ingredientClassNames) {
+            OWLClass ingClass = dataFactory.getOWLClass(
+                    IRI.create(ontologyIRI + ing)
+            );
+            ingredientClassExprs.add(ingClass);
+        }
+
+        // Handle edge cases: empty or single ingredient list
+        OWLClassExpression unionOfIngredients;
+        if (ingredientClassExprs.isEmpty()) {
+            // No ingredients → owl:Nothing (meaning: "hasIngredient only Nothing" → no ingredients allowed)
+            unionOfIngredients = dataFactory.getOWLNothing();
+        } else if (ingredientClassExprs.size() == 1) {
+            // Only one ingredient → no need for a union
+            unionOfIngredients = ingredientClassExprs.iterator().next();
+        } else {
+            // Multiple ingredients → create a union
+            unionOfIngredients = dataFactory.getOWLObjectUnionOf(ingredientClassExprs);
+        }
+
+        // 4) Build "hasIngredient only (unionOfIngredients)"
+        OWLClassExpression onlyRestriction = dataFactory.getOWLObjectAllValuesFrom(
+                hasIngredient,
+                unionOfIngredients
+        );
+
+        // 5) SubClassOf(recipeClass, that 'only' restriction)
+        OWLAxiom onlyAxiom = dataFactory.getOWLSubClassOfAxiom(recipeClass, onlyRestriction);
+
+        // 6) Add axiom to the ontology
+        ontologyManager.addAxiom(ontology, onlyAxiom);
+    }
+
     /**
      * Check if a class name is a valid DietaryPreference.
      */

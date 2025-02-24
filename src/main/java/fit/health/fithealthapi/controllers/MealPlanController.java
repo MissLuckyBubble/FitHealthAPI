@@ -2,20 +2,28 @@ package fit.health.fithealthapi.controllers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fit.health.fithealthapi.agents.UserAgent;
 import fit.health.fithealthapi.exceptions.UserNotFoundException;
 import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.MealPlanRequest;
+import fit.health.fithealthapi.model.dto.MealPlanRequestDTO;
+import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
+import jade.wrapper.AgentController;
+import jade.wrapper.StaleProxyException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import jade.wrapper.AgentContainer;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +37,8 @@ public class MealPlanController {
     private MealPlanService mealPlanService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private AgentContainer agentContainer;
 
     @PostMapping
     public ResponseEntity<?> createMealPlan(@RequestBody MealPlanRequest request) {
@@ -149,5 +159,22 @@ public class MealPlanController {
                     .build();
         }
     }
+    @PostMapping("/{userId}/generate")
+    public ResponseEntity<String> generateMealPlan(@PathVariable Long userId, @RequestBody MealPlanRequestDTO request) {
+        User user = userService.getUserById(userId);
+        if (user==null) {
+            return ResponseEntity.badRequest().body("User not found");
+        }
 
+        try {
+        UserAgent userAgent = new UserAgent();
+        userAgent.init(mealPlanService,user,request.getRecipeTypes());
+        AgentController userAgentController = agentContainer.acceptNewAgent("userAgent" + user.getUsername(), userAgent);
+        userAgentController.start();
+
+        return ResponseEntity.ok("Meal plan request sent to JADE agents.");
+        } catch (StaleProxyException e) {
+            return ResponseEntity.status(500).body("Failed to start agents");
+        }
+    }
 }

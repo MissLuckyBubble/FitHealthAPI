@@ -3,7 +3,10 @@ package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.exceptions.UserNotFoundException;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.model.dto.UserDTO;
+import fit.health.fithealthapi.model.dto.LoginUserDTO;
+import fit.health.fithealthapi.model.enums.ActivityLevel;
+import fit.health.fithealthapi.model.enums.Gender;
+import fit.health.fithealthapi.model.enums.Goal;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -15,8 +18,8 @@ import jakarta.persistence.criteria.Root;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
-
-import java.util.HashSet;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +32,7 @@ public class UserService {
     @Autowired
     private EntityManager entityManager;
 
-    public User saveUser(UserDTO user) {
+    public User saveUser(LoginUserDTO user) {
         Optional<User> userOptional = userRepository.findByUsername(user.getUsername());
         if (userOptional.isPresent()) {
             throw new IllegalArgumentException("Username already exists");
@@ -55,13 +58,57 @@ public class UserService {
         existingUser.setWeightKG(updatedUser.getWeightKG());
         existingUser.setGoalWeight(updatedUser.getGoalWeight());
         existingUser.setHeightCM(updatedUser.getHeightCM());
-        existingUser.setDailyCalorieGoal(updatedUser.getDailyCalorieGoal());
         existingUser.setGender(updatedUser.getGender());
         existingUser.setDietaryPreferences(updatedUser.getDietaryPreferences());
         existingUser.setHealthConditions(updatedUser.getHealthConditions());
         existingUser.setAllergens(updatedUser.getAllergens());
+        existingUser.setActivityLevel(updatedUser.getActivityLevel());
+        existingUser.setGoal(updatedUser.getGoal());
+
+        boolean hasValidData = updatedUser.getWeightKG() > 0 &&
+                updatedUser.getHeightCM() > 0 &&
+                updatedUser.getBirthDate() != null &&
+                !updatedUser.getBirthDate().isEmpty();
+
+        if(updatedUser.getDailyCalorieGoal() == 0){
+            if (hasValidData) {
+                double bmr = calculateBMR(
+                        updatedUser.getWeightKG(),
+                        updatedUser.getHeightCM(),
+                        calculateAge(updatedUser.getBirthDate()),
+                        updatedUser.getGender()
+                );
+                double tdee = calculateTDEE(bmr, updatedUser.getActivityLevel());
+                double newCalorieGoal = calculateCaloriesForGoal(tdee, updatedUser.getGoal());
+                existingUser.setDailyCalorieGoal((float) newCalorieGoal);
+            }else{
+                existingUser.setDailyCalorieGoal(existingUser.getDailyCalorieGoal());
+            }
+        } else {
+            existingUser.setDailyCalorieGoal(updatedUser.getDailyCalorieGoal());
+        }
 
         return userRepository.save(existingUser);
+    }
+
+    public double calculateTDEE(double bmr, ActivityLevel activityLevel) {
+        return bmr * activityLevel.getMultiplier();
+    }
+
+    public double calculateBMR(double weightKG, double heightCM, int age, Gender gender) {
+        if (gender == Gender.MALE) {
+            return (10 * weightKG) + (6.25 * heightCM) - (5 * age) + 5;
+        } else {
+            return (10 * weightKG) + (6.25 * heightCM) - (5 * age) - 161;
+        }
+    }
+
+    public double calculateCaloriesForGoal(double tdee, Goal goal) {
+        return tdee + goal.getCalorieAdjustment();
+    }
+    public int calculateAge(String birthDate) {
+        LocalDate birth = LocalDate.parse(birthDate);
+        return Period.between(birth, LocalDate.now()).getYears();
     }
 
     public boolean checkCredentials(String username, String password) {
@@ -70,10 +117,7 @@ public class UserService {
            return false;
         }
         User user = optionalUser.get();
-        if (!verifyPassword(password, user.getPassword())) {
-           return false;
-        }
-        return true;
+        return verifyPassword(password, user.getPassword());
     }
 
     private String hashPassword(String password) {
