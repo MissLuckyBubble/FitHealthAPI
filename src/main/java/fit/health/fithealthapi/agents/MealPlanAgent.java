@@ -1,7 +1,5 @@
 package fit.health.fithealthapi.agents;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
@@ -39,16 +37,14 @@ public class MealPlanAgent extends Agent {
         @Override
         public void action() {
             ACLMessage msg = myAgent.receive();
-            if (msg != null && msg.getPerformative() == ACLMessage.REQUEST) {
-                String[] parts = msg.getContent().split(";");
-                Long userId = Long.parseLong(parts[0]);
-                Set<RecipeType> recipeTypes = extractMealTypes(parts[1]);
-                User user = userService.getUserById(userId);
-                List<Recipe> recommendedMeals = generateMealPlan(user, recipeTypes);
-                ACLMessage reply = msg.createReply();
-                reply.setPerformative(ACLMessage.INFORM);
-                reply.setContent(serializeMealPlan(recommendedMeals));
-                myAgent.send(reply);
+            if (msg != null) {
+               switch (msg.getPerformative()) {
+                   case ACLMessage.REQUEST:
+                       generateMealPlan(msg);
+                       break;
+                   case ACLMessage.INFORM:
+
+               }
             } else {
                 block();
             }
@@ -62,26 +58,22 @@ public class MealPlanAgent extends Agent {
             return mealTypes;
         }
 
-        private List<Recipe> generateMealPlan(User user, Set<RecipeType> recipeTypes) {
-            float remainingCalories = user.getDailyCalorieGoal();
-            List<Recipe> selectedMeals = new ArrayList<>();
+        private void generateMealPlan(ACLMessage msg) {
+            String[] content = msg.getContent().split(";");
+            Long userId = Long.parseLong(content[0]);
+            int days = Integer.parseInt(content[2]);
 
-            for (RecipeType type : recipeTypes) {
-                RecipeSearchRequest searchRequest = new RecipeSearchRequest();
-                searchRequest.setDietaryPreferences(user.getDietaryPreferences().stream().toList());
-                searchRequest.setAllergens(user.getAllergens().stream().toList());
-                searchRequest.setRecipeTypes(Collections.singletonList(type));
-                searchRequest.setMaxCalories(remainingCalories); // Ensure calories fit
-                searchRequest.setGoal(user.getGoal());
-                List<Recipe> filteredRecipes = recipeService.searchRecipes(searchRequest);
+            System.out.println(getLocalName() + " received request for " + days + " days of meal plans.");
 
-                if (!filteredRecipes.isEmpty()) {
-                    Recipe selected = filteredRecipes.get(0);
-                    selectedMeals.add(selected);
-                    remainingCalories -= selected.getCalories();
-                }
-            }
-            return selectedMeals;
+            User user = userService.getUserById(userId);
+
+            RecipeSearchRequest searchRequest = new RecipeSearchRequest();
+            searchRequest.setDietaryPreferences(user.getDietaryPreferences().stream().toList());
+            searchRequest.setAllergens(user.getAllergens().stream().toList());
+            searchRequest.setMaxCalories(user.getDailyCalorieGoal());
+            searchRequest.setGoal(user.getGoal());
+
+            List<Long> filteredRecipesIds = recipeService.searchRecipes(searchRequest).stream().map(Recipe::getId).toList();
         }
 
         private String serializeMealPlan(List<Recipe> recipes) {

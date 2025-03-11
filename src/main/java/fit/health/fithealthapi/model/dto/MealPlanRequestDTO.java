@@ -9,4 +9,5 @@ import java.util.Set;
 @Setter
 public class MealPlanRequestDTO {
     private Set<RecipeType> recipeTypes;
+    private int days = 1;
 }

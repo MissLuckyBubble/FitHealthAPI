@@ -1,6 +1,7 @@
 package fit.health.fithealthapi.configurations;
 
 import fit.health.fithealthapi.agents.MealPlanAgent;
+import fit.health.fithealthapi.agents.MealScoringAgent;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
 import jade.core.Profile;
@@ -9,7 +10,6 @@ import jade.core.Runtime;
 import jade.wrapper.AgentContainer;
 import jade.wrapper.AgentController;
 import jade.wrapper.StaleProxyException;
-import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -37,6 +37,7 @@ public class JadeConfig {
         System.out.println("JADE!!! STARTED");
 
         startMealPlanAgent();
+        startMealScoringAgent();
     }
 
     private void startMealPlanAgent() {
@@ -47,7 +48,18 @@ public class JadeConfig {
             AgentController agent = mainContainer.acceptNewAgent("MealPlanAgent", agentInstance);
             agent.start();
         } catch (StaleProxyException e) {
-            e.printStackTrace();
+            System.err.println("Failed to start MealPlanAgent.");
+        }
+    }
+
+    private void startMealScoringAgent() {
+        try {
+            // Create an instance of MealPlanAgent with services
+            MealScoringAgent agentInstance = new MealScoringAgent();
+            agentInstance.init(recipeService, userService);
+            AgentController agent = mainContainer.acceptNewAgent("MealScoringAgent", agentInstance);
+            agent.start();
+        } catch (StaleProxyException e) {
             System.err.println("Failed to start MealPlanAgent.");
         }
     }

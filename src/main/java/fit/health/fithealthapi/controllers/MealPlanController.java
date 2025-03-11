@@ -1,180 +1,98 @@
 package fit.health.fithealthapi.controllers;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fit.health.fithealthapi.agents.UserAgent;
-import fit.health.fithealthapi.exceptions.UserNotFoundException;
 import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.model.dto.MealPlanRequest;
-import fit.health.fithealthapi.model.dto.MealPlanRequestDTO;
+import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
+import fit.health.fithealthapi.model.dto.MealSearchDto;
 import fit.health.fithealthapi.model.enums.RecipeType;
-import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
-import jade.wrapper.AgentController;
-import jade.wrapper.StaleProxyException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpHeaders;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import jade.wrapper.AgentContainer;
-
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/meal-plans")
+@RequiredArgsConstructor
 public class MealPlanController {
+    private final MealPlanService mealPlanService;
+    private final UserService userService;
 
-    @Autowired
-    private MealPlanService mealPlanService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private AgentContainer agentContainer;
+    private User getAuthenticatedUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.getUserByUsername(username);
+    }
 
     @PostMapping
-    public ResponseEntity<?> createMealPlan(@RequestBody MealPlanRequest request) {
-        try {
-            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+    public ResponseEntity<?> createMealPlan(@RequestBody MealPlan mealPlan) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
 
-            User user = userService.getUserByUsername(username);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
-            }
-            MealPlan mealPlan = mealPlanService.createMealPlan(request.getName(), user, request.getRecipeIds());
-            return ResponseEntity.ok(mealPlan);
-        }
-        catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid user data: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
-        }
-
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateMealPlan(
-            @PathVariable Long id,
-            @RequestBody MealPlanRequest request,
-            Authentication authentication
-    ) {
-        String currentUsername = authentication.getName();
-        User currentUser = userService.getUserByUsername(currentUsername);
-
-        MealPlan existingPlan = mealPlanService.getMealPlanById(id);
-        if (existingPlan == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found");
-        }
-
-        // Ensure either admin or owner
-        if (!currentUser.getRole().equals(Role.ADMIN) &&
-                !currentUser.getId().equals(existingPlan.getUser().getId())) {
-            return ResponseEntity
-                    .status(HttpStatus.FORBIDDEN)
-                    .body("You don't have permission to edit this meal plan.");
-        }
-
-        // Let the service update the meal plan fields
-        MealPlan updatedMealPlan = mealPlanService.updateMealPlan(
-                existingPlan,
-                request.getName(),
-                request.getRecipeIds()
-                // pass other fields if you want to update them
-        );
-
-        return ResponseEntity.ok(updatedMealPlan);
-    }
-
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMealPlan(@PathVariable Long id, Authentication authentication) {
-        String currentUsername = authentication.getName();
-        User currentUser = userService.getUserByUsername(currentUsername);
-        if (!currentUser.getRole().equals(Role.ADMIN) && !currentUser.getId().equals(mealPlanService.getMealPlanById(id).getUser().getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You don't have permission to delete this meal plan.");
-        }
-        mealPlanService.deleteMealPlan(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<MealPlan> getMealPlanById(@PathVariable Long id) {
-        MealPlan mealPlan = mealPlanService.getMealPlanById(id);
-        return ResponseEntity.ok(mealPlan);
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<Set<MealPlan>> getMealPlansForUser(@PathVariable Long userId) {
-        Set<MealPlan> mealPlans = mealPlanService.getMealPlansForUser(userId);
-        return ResponseEntity.ok(mealPlans);
+        mealPlan.setUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mealPlanService.createMealPlan(mealPlan));
     }
 
     @GetMapping
-    public ResponseEntity<List<MealPlan>> getMealPlans(
-            @RequestParam(value = "filter", defaultValue = "{}") String filterJson,
-            @RequestParam(value = "range", defaultValue = "[0,9]") String rangeJson,
-            @RequestParam(value = "sort", defaultValue = "[\"id\",\"ASC\"]") String sortJson
-    ) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-
-            Map<String, Object> filterMap = mapper.readValue(filterJson, new TypeReference<>() {});
-
-            List<Integer> rangeList = mapper.readValue(rangeJson, new TypeReference<>() {});
-            int start = rangeList.get(0);
-            int end = rangeList.get(1);
-            List<String> sortList = mapper.readValue(sortJson, new TypeReference<>() {});
-            String sortField = sortList.get(0);
-            String sortOrder = sortList.get(1);
-            List<MealPlan> allMealPlans = mealPlanService.findMealPlans(filterMap, sortField, sortOrder);
-            int total = allMealPlans.size();
-            int safeEnd = Math.min(end, total - 1);
-            if (start > safeEnd) {
-                start = 0;
-                safeEnd = -1;
-            }
-            List<MealPlan> paginated = safeEnd >= start
-                    ? allMealPlans.subList(start, safeEnd + 1)
-                    : List.of();
-
-            String contentRange = String.format("%d-%d/%d", start, safeEnd, total);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Range", contentRange);
-
-            return new ResponseEntity<>(paginated, headers, HttpStatus.OK);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .build();
-        }
+    public ResponseEntity<List<MealPlan>> getUserMealPlans() {
+        User user = getAuthenticatedUser();
+        return ResponseEntity.ok(mealPlanService.getUserMealPlans(user));
     }
-    @PostMapping("/{userId}/generate")
-    public ResponseEntity<String> generateMealPlan(@PathVariable Long userId, @RequestBody MealPlanRequestDTO request) {
-        User user = userService.getUserById(userId);
-        if (user==null) {
-            return ResponseEntity.badRequest().body("User not found");
-        }
 
-        try {
-        UserAgent userAgent = new UserAgent();
-        userAgent.init(mealPlanService,user,request.getRecipeTypes());
-        AgentController userAgentController = agentContainer.acceptNewAgent("userAgent" + user.getUsername(), userAgent);
-        userAgentController.start();
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getMealPlan(@PathVariable Long id) {
+        return mealPlanService.getMealPlanById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
+    }
 
-        return ResponseEntity.ok("Meal plan request sent to JADE agents.");
-        } catch (StaleProxyException e) {
-            return ResponseEntity.status(500).body("Failed to start agents");
-        }
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateMealPlan(@PathVariable Long id, @RequestBody MealPlan mealPlan) {
+        User user = getAuthenticatedUser();
+        return mealPlanService.getMealPlanById(id)
+                .map(existingPlan -> {
+                    if (!existingPlan.getUser().equals(user))
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+
+                    mealPlan.setId(id);
+                    mealPlan.setUser(user);
+                    return ResponseEntity.ok(mealPlanService.updateMealPlan(mealPlan));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteMealPlan(@PathVariable Long id) {
+        User user = getAuthenticatedUser();
+        return mealPlanService.getMealPlanById(id)
+                .map(mealPlan -> {
+                    if (!mealPlan.getUser().equals(user))
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+
+                    mealPlanService.deleteMealPlan(id);
+                    return ResponseEntity.ok("Meal plan deleted successfully");
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
+    }
+
+    @PutMapping("/assign-meal")
+    public ResponseEntity<?> assignMealToMealPlan(@RequestBody CreateMealRequestDto assignMealDto) {
+        mealPlanService.setMeal(assignMealDto);
+        return ResponseEntity.ok("Meal assigned to meal plan successfully");
+    }
+
+    @PutMapping("{id}/meal/{recipeType}")
+    public ResponseEntity<?> removeMeal(@PathVariable Long id, @PathVariable String recipeType) {
+        User user = getAuthenticatedUser();
+        MealPlan mealPlan = mealPlanService.removeMeal(id, RecipeType.fromString(recipeType),user);
+        return ResponseEntity.ok(mealPlan);
+    }
+
+    @PutMapping("/search")
+    public ResponseEntity<?> searchMealPlans(@RequestBody MealSearchDto searchDto) {
+        return ResponseEntity.ok(mealPlanService.searchMealPlan(searchDto));
     }
 }

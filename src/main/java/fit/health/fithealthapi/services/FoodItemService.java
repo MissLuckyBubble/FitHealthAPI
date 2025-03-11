@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.Macronutrients;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.RecipeIngredient;
 import fit.health.fithealthapi.model.dto.InferredPreferences;
@@ -88,11 +89,7 @@ public class FoodItemService {
     }
 
     private void updateFoodFields(FoodItem updatedFoodItem, FoodItem existingFoodItem) {
-        existingFoodItem.setCaloriesPer100g(updatedFoodItem.getCaloriesPer100g());
-        existingFoodItem.setFatContent(updatedFoodItem.getFatContent());
-        existingFoodItem.setProteinContent(updatedFoodItem.getProteinContent());
-        existingFoodItem.setSugarContent(updatedFoodItem.getSugarContent());
-        existingFoodItem.setSaltContent(updatedFoodItem.getSaltContent());
+        existingFoodItem.setMacronutrients(existingFoodItem.getMacronutrients());
         existingFoodItem.setAllergens(new HashSet<>(updatedFoodItem.getAllergens()));
         existingFoodItem.setDietaryPreferences(new HashSet<>(updatedFoodItem.getDietaryPreferences()));
         existingFoodItem.setHealthConditionSuitability(new HashSet<>(updatedFoodItem.getHealthConditionSuitability()));
@@ -102,13 +99,23 @@ public class FoodItemService {
         if (updatedFoodItem == null || existingFoodItem == null) {
             return false;
         }
-        return Objects.equals(updatedFoodItem.getCaloriesPer100g(), existingFoodItem.getCaloriesPer100g()) &&
-                Objects.equals(updatedFoodItem.getFatContent(), existingFoodItem.getFatContent()) &&
-                Objects.equals(updatedFoodItem.getProteinContent(), existingFoodItem.getProteinContent()) &&
-                Objects.equals(updatedFoodItem.getSugarContent(), existingFoodItem.getSugarContent()) &&
-                Objects.equals(updatedFoodItem.getSaltContent(), existingFoodItem.getSaltContent()) &&
-                updatedFoodItem.getAllergens().equals(existingFoodItem.getAllergens());
+
+        // Compare macronutrient values
+        Macronutrients updatedMacronutrients = updatedFoodItem.getMacronutrients();
+        Macronutrients existingMacronutrients = existingFoodItem.getMacronutrients();
+
+        if (updatedMacronutrients == null || existingMacronutrients == null) {
+            return false;
+        }
+
+        return Objects.equals(updatedMacronutrients.getCalories(), existingMacronutrients.getCalories()) &&
+                Objects.equals(updatedMacronutrients.getFat(), existingMacronutrients.getFat()) &&
+                Objects.equals(updatedMacronutrients.getProtein(), existingMacronutrients.getProtein()) &&
+                Objects.equals(updatedMacronutrients.getSugar(), existingMacronutrients.getSugar()) &&
+                Objects.equals(updatedMacronutrients.getSalt(), existingMacronutrients.getSalt()) &&
+                Objects.equals(updatedFoodItem.getAllergens(), existingFoodItem.getAllergens());
     }
+
 
     public List<FoodItem> getAllFoodItems() {
         return foodItemRepository.findAll();
@@ -209,11 +216,11 @@ public class FoodItemService {
 
     private void addDataProperties(FoodItem foodItem) {
         ontologyService.createItemType(foodItem.getOntologyLinkedName(), "FoodItem");
-        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "caloriesPer100gram", foodItem.getCaloriesPer100g());
-        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "proteinContent", foodItem.getProteinContent());
-        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "fatContent", foodItem.getFatContent());
-        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "sugarContent", foodItem.getSugarContent());
-        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "saltContent", foodItem.getSaltContent());
+        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "caloriesPer100gram", foodItem.getMacronutrients().getCalories());
+        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "proteinContent", foodItem.getMacronutrients().getProtein());
+        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "fatContent", foodItem.getMacronutrients().getFat());
+        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "sugarContent", foodItem.getMacronutrients().getSugar());
+        ontologyService.addDataPropertyRestriction(foodItem.getOntologyLinkedName(), "saltContent", foodItem.getMacronutrients().getSalt());
 
         // Add allergens or default to "Allergen_Free"
         if (foodItem.getAllergens() != null && !foodItem.getAllergens().isEmpty()) {

@@ -1,6 +1,5 @@
 package fit.health.fithealthapi.model;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import fit.health.fithealthapi.model.enums.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -39,23 +38,11 @@ public class Recipe {
     @Column(nullable = false)
     private Integer servingSize;
 
-    @Column(nullable = true)
     private Float totalWeight;
 
-    @Column(nullable = true)
-    private Float calories; // Total calories for the recipe
-
-    @Column(nullable = true)
-    private Float fatContent;
-
-    @Column(nullable = true)
-    private Float proteinContent;
-
-    @Column(nullable = true)
-    private Float saltContent;
-
-    @Column(nullable = true)
-    private Float sugarContent;
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "macronutrients_id", nullable = false)
+    private Macronutrients macronutrients;
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)

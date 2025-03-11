@@ -1,8 +1,8 @@
 package fit.health.fithealthapi.services;
 
-import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.Macronutrients;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.RecipeIngredient;
 import fit.health.fithealthapi.model.dto.InferredPreferences;
@@ -52,6 +52,9 @@ public class RecipeService {
     public Recipe saveRecipe(Recipe recipe) {
         String ontName = sharedService.convertToOntoCase(recipe.getName() + new SimpleDateFormat("yyyyHHmmss").format(new java.util.Date()));
         recipe.setOntologyLinkedName(ontName);
+        for(var item : recipe.getIngredients()){
+            item.setFoodItem(foodItemService.findById(item.getFoodItem().getId()));
+        }
         calculateNutritionalValues(recipe);
         addRecipeToOntology(recipe);
         inferPreferences(recipe);
@@ -106,19 +109,22 @@ public class RecipeService {
             FoodItem foodItem = ingredient.getFoodItem();
             float quantityInGrams = ingredient.getUnit().convertToGrams(ingredient.getQuantity());
 
-            totalCalories += (foodItem.getCaloriesPer100g() * quantityInGrams) / 100;
-            totalFat += (foodItem.getFatContent() * quantityInGrams) / 100;
-            totalProtein += (foodItem.getProteinContent() * quantityInGrams) / 100;
-            totalSalt += (foodItem.getSaltContent() * quantityInGrams) / 100;
-            totalSugar += (foodItem.getSugarContent() * quantityInGrams) / 100;
+            totalCalories += (foodItem.getMacronutrients().getCalories() * quantityInGrams) / 100;
+            totalFat += (foodItem.getMacronutrients().getFat() * quantityInGrams) / 100;
+            totalProtein += (foodItem.getMacronutrients().getProtein() * quantityInGrams) / 100;
+            totalSalt += (foodItem.getMacronutrients().getSalt() * quantityInGrams) / 100;
+            totalSugar += (foodItem.getMacronutrients().getSugar() * quantityInGrams) / 100;
             totalWeight += quantityInGrams;
         }
 
-        recipe.setCalories(totalCalories);
-        recipe.setFatContent(totalFat);
-        recipe.setProteinContent(totalProtein);
-        recipe.setSaltContent(totalSalt);
-        recipe.setSugarContent(totalSugar);
+        Macronutrients macronutrients = new Macronutrients();
+        macronutrients.setCalories(totalCalories);
+        macronutrients.setFat(totalFat);
+        macronutrients.setProtein(totalProtein);
+        macronutrients.setSalt(totalSalt);
+        macronutrients.setSalt(totalSugar);
+        recipe.setMacronutrients(macronutrients);
+
         recipe.setTotalWeight(totalWeight);
     }
 
@@ -153,11 +159,11 @@ public class RecipeService {
         ontologyService.addDataPropertyRestriction(recipeName, "preparationTime", recipe.getPreparationTime());
         ontologyService.addDataPropertyRestriction(recipeName, "cookingTime", recipe.getCookingTime());
         ontologyService.addDataPropertyRestriction(recipeName, "servingSize", recipe.getServingSize());
-        ontologyService.addDataPropertyRestriction(recipeName, "totalCalories", recipe.getCalories());
-        ontologyService.addDataPropertyRestriction(recipeName, "totalFat", recipe.getFatContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "totalProtein", recipe.getProteinContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "totalSalt", recipe.getSaltContent());
-        ontologyService.addDataPropertyRestriction(recipeName, "totalSugar", recipe.getSugarContent());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalCalories", recipe.getMacronutrients().getCalories());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalFat", recipe.getMacronutrients().getFat());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalProtein", recipe.getMacronutrients().getProtein());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalSalt", recipe.getMacronutrients().getSalt());
+        ontologyService.addDataPropertyRestriction(recipeName, "totalSugar", recipe.getMacronutrients().getSugar());
 
         if (recipe.getDescription() != null) {
             ontologyService.addDataPropertyRestriction(recipeName, "description", recipe.getDescription());
@@ -178,11 +184,7 @@ public class RecipeService {
         existingRecipe.setPreparationTime(updatedRecipe.getPreparationTime());
         existingRecipe.setCookingTime(updatedRecipe.getCookingTime());
         existingRecipe.setServingSize(updatedRecipe.getServingSize());
-        existingRecipe.setCalories(updatedRecipe.getCalories());
-        existingRecipe.setFatContent(updatedRecipe.getFatContent());
-        existingRecipe.setProteinContent(updatedRecipe.getProteinContent());
-        existingRecipe.setSaltContent(updatedRecipe.getSaltContent());
-        existingRecipe.setSugarContent(updatedRecipe.getSugarContent());
+        existingRecipe.setMacronutrients(updatedRecipe.getMacronutrients());
         existingRecipe.setDietaryPreferences(updatedRecipe.getDietaryPreferences());
         existingRecipe.setRecipeTypes(updatedRecipe.getRecipeTypes());
         existingRecipe.setIngredients(updatedRecipe.getIngredients());
@@ -194,11 +196,12 @@ public class RecipeService {
             return false;
         }
 
-        boolean areNutritionalValuesEqual = Objects.equals(existingRecipe.getCalories(), updatedRecipe.getCalories()) &&
-                Objects.equals(existingRecipe.getFatContent(), updatedRecipe.getFatContent()) &&
-                Objects.equals(existingRecipe.getProteinContent(), updatedRecipe.getProteinContent()) &&
-                Objects.equals(existingRecipe.getSaltContent(), updatedRecipe.getSaltContent()) &&
-                Objects.equals(existingRecipe.getSugarContent(), updatedRecipe.getSugarContent());
+        boolean areNutritionalValuesEqual =
+                Objects.equals(existingRecipe.getMacronutrients().getCalories(), updatedRecipe.getMacronutrients().getCalories()) &&
+                Objects.equals(existingRecipe.getMacronutrients().getFat(), updatedRecipe.getMacronutrients().getFat()) &&
+                Objects.equals(existingRecipe.getMacronutrients().getProtein(), updatedRecipe.getMacronutrients().getProtein()) &&
+                Objects.equals(existingRecipe.getMacronutrients().getSalt(), updatedRecipe.getMacronutrients().getSalt()) &&
+                Objects.equals(existingRecipe.getMacronutrients().getSugar(), updatedRecipe.getMacronutrients().getSugar());
 
         if (!areNutritionalValuesEqual) {
             return false;
@@ -249,10 +252,16 @@ public class RecipeService {
 
         if (goal == Goal.GAIN_SLOW || goal == Goal.GAIN_FAST) {
             // ✅ High-calorie recipes first for weight gain
-            calorieComparator = Comparator.comparing(Recipe::getCalories, Comparator.nullsLast(Float::compare)).reversed();
+            calorieComparator = Comparator.comparing(
+                    (Recipe recipe) -> recipe.getMacronutrients().getCalories(), // Explicitly declare type
+                    Comparator.nullsLast(Float::compare)
+            ).reversed();
         } else {
-            // ✅ Default: Low-calorie recipes first for weight loss
-            calorieComparator = Comparator.comparing(Recipe::getCalories, Comparator.nullsLast(Float::compare));
+            // ✅ Low-calorie recipes first for weight loss
+            calorieComparator = Comparator.comparing(
+                    (Recipe recipe) -> recipe.getMacronutrients().getCalories(),
+                    Comparator.nullsLast(Float::compare)
+            );
         }
 
         return calorieComparator
@@ -347,8 +356,8 @@ public class RecipeService {
     }
 
     private boolean withinCalorieRange(Recipe recipe, Float minCalories, Float maxCalories) {
-        boolean meetsMinCalories = minCalories == null || recipe.getCalories() >= minCalories;
-        boolean meetsMaxCalories = maxCalories == null || recipe.getCalories() <= maxCalories;
+        boolean meetsMinCalories = minCalories == null || recipe.getMacronutrients().getCalories() >= minCalories;
+        boolean meetsMaxCalories = maxCalories == null || recipe.getMacronutrients().getCalories() <= maxCalories;
 
         return meetsMinCalories && meetsMaxCalories;
     }
