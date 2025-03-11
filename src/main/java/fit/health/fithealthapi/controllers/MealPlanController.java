@@ -1,89 +1,98 @@
 package fit.health.fithealthapi.controllers;
 
-import fit.health.fithealthapi.agents.MealPlanAgent;
-import fit.health.fithealthapi.agents.UserAgent;
-import fit.health.fithealthapi.exceptions.CustomException;
 import fit.health.fithealthapi.model.MealPlan;
-import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.services.RecipeService;
+import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
+import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
-import jade.wrapper.AgentContainer;
-import jade.wrapper.AgentController;
-import jade.wrapper.StaleProxyException;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/mealplans")
+@RequestMapping("/meal-plans")
+@RequiredArgsConstructor
 public class MealPlanController {
+    private final MealPlanService mealPlanService;
+    private final UserService userService;
 
-    @Autowired
-    private AgentContainer agentContainer;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private RecipeService recipeService;
-
-
-    @GetMapping("")
-    public ResponseEntity<?> getMealPlans(@RequestParam String username) {
-        try {
-            List<MealPlan> mealPlans = userService.getMealPlans(username);
-            if (mealPlans == null || mealPlans.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(mealPlans);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
-        }
+    private User getAuthenticatedUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.getUserByUsername(username);
     }
 
+    @PostMapping
+    public ResponseEntity<?> createMealPlan(@RequestBody MealPlan mealPlan) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
+
+        mealPlan.setUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mealPlanService.createMealPlan(mealPlan));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<MealPlan>> getUserMealPlans() {
+        User user = getAuthenticatedUser();
+        return ResponseEntity.ok(mealPlanService.getUserMealPlans(user));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getMealPlan(@PathVariable Long id) {
+        return mealPlanService.getMealPlanById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateMealPlan(@PathVariable Long id, @RequestBody MealPlan mealPlan) {
+        User user = getAuthenticatedUser();
+        return mealPlanService.getMealPlanById(id)
+                .map(existingPlan -> {
+                    if (!existingPlan.getUser().equals(user))
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+
+                    mealPlan.setId(id);
+                    mealPlan.setUser(user);
+                    return ResponseEntity.ok(mealPlanService.updateMealPlan(mealPlan));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
+    }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMealPlan(@PathVariable("id") String mealPlanIdFragment) {
-        try {
-            userService.deleteMealPlan(mealPlanIdFragment);
-            return ResponseEntity.ok("Meal plan deleted successfully.");
-        } catch (CustomException e) {
-            return ResponseEntity.status(404).body("Meal plan not found: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
-        }
+    public ResponseEntity<?> deleteMealPlan(@PathVariable Long id) {
+        User user = getAuthenticatedUser();
+        return mealPlanService.getMealPlanById(id)
+                .map(mealPlan -> {
+                    if (!mealPlan.getUser().equals(user))
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+
+                    mealPlanService.deleteMealPlan(id);
+                    return ResponseEntity.ok("Meal plan deleted successfully");
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
     }
 
-    @PostMapping("/generate")
-    public ResponseEntity<String> generateMealPlan(@RequestParam String username, @RequestParam int numberOfMeals, @RequestParam int days) {
-        try {
-            User user = userService.getUserByUsername(username);
-            if (user == null) {
-                return ResponseEntity.status(404).body("User not found");
-            }
+    @PutMapping("/assign-meal")
+    public ResponseEntity<?> assignMealToMealPlan(@RequestBody CreateMealRequestDto assignMealDto) {
+        mealPlanService.setMeal(assignMealDto);
+        return ResponseEntity.ok("Meal assigned to meal plan successfully");
+    }
 
-            List<Recipe> recipes = recipeService.getRecipesByPreferences(user.getDietaryPreferences());
-            if (recipes.isEmpty()) {
-                return ResponseEntity.status(404).body("Recipes not found");
-            }
+    @PutMapping("{id}/meal/{recipeType}")
+    public ResponseEntity<?> removeMeal(@PathVariable Long id, @PathVariable String recipeType) {
+        User user = getAuthenticatedUser();
+        MealPlan mealPlan = mealPlanService.removeMeal(id, RecipeType.fromString(recipeType),user);
+        return ResponseEntity.ok(mealPlan);
+    }
 
-            MealPlanAgent mealPlanAgent = new MealPlanAgent();
-            mealPlanAgent.init(userService, recipeService, user, recipes, numberOfMeals, days);
-            AgentController mealPlanAgentController = agentContainer.acceptNewAgent("mealPlanAgent" + username, mealPlanAgent);
-            mealPlanAgentController.start();
-
-            UserAgent userAgent = new UserAgent();
-            userAgent.init(userService, recipeService, user, recipes, numberOfMeals, days);
-            AgentController userAgentController = agentContainer.acceptNewAgent("userAgent" + username, userAgent);
-            userAgentController.start();
-
-            return ResponseEntity.ok("Meal plan generation started for user: " + username);
-        } catch (StaleProxyException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Failed to start agents");
-        }
+    @PutMapping("/search")
+    public ResponseEntity<?> searchMealPlans(@RequestBody MealSearchDto searchDto) {
+        return ResponseEntity.ok(mealPlanService.searchMealPlan(searchDto));
     }
 }

@@ -1,83 +1,89 @@
 package fit.health.fithealthapi.agents;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fit.health.fithealthapi.model.Recipe;
+
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.services.RecipeService;
-import fit.health.fithealthapi.services.UserService;
-import jade.core.AID;
+import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.services.MealPlanService;
 import jade.core.Agent;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class UserAgent extends Agent {
 
-    private UserService userService;
-    private RecipeService recipeService;
+    private MealPlanService mealPlanService;
     private User user;
-    private List<Recipe> recipes;
-    private int numberOfMeals;
-    private int numberOfDays;
+    Set<RecipeType> recipeTypes;
+    private int days;
 
     public UserAgent() {
         // Default constructor for JADE
     }
 
-    public void init(UserService userService, RecipeService recipeService, User user, List<Recipe> recipes, int numberOfMeals, int numberOfDays) {
-        this.userService = userService;
-        this.recipeService = recipeService;
+    public void init(MealPlanService mealPlanService, User user, Set<RecipeType> recipeTypes, int days) {
+        this.mealPlanService = mealPlanService;
         this.user = user;
-        this.recipes = recipes;
-        this.numberOfMeals = numberOfMeals;
-        this.numberOfDays = numberOfDays;
+        this.recipeTypes = recipeTypes;
+        this.days = days;
     }
 
     @Override
     protected void setup() {
+        System.out.println(getLocalName() + " started.");
         addBehaviour(new RequestMealPlanBehaviour());
-        addBehaviour(new ReceiveMealPlanBehaviour());
+        addBehaviour(new ReceiveMealPlanBehaviour(days));
     }
 
     private class RequestMealPlanBehaviour extends OneShotBehaviour {
         @Override
         public void action() {
             ACLMessage request = new ACLMessage(ACLMessage.REQUEST);
-            AID mealPlanAgent = new AID("mealPlanAgent" + user.getUsername(), AID.ISLOCALNAME);
-            request.addReceiver(mealPlanAgent);
-            request.setContent("Generate meal plan for user: " + user.getUsername());
+            request.addReceiver(getAID("MealPlanAgent"));
+            request.setContent(user.getId()+";"+recipeTypes.toString()+";"+days);
             myAgent.send(request);
+            System.out.println("UserAgent(" +getLocalName()+"): Sent request to Meal Recommendation Agent.");
         }
     }
 
     private class ReceiveMealPlanBehaviour extends CyclicBehaviour {
+        private int remainingDays;
+        public ReceiveMealPlanBehaviour(int days) {
+            this.remainingDays = days;
+        }
         @Override
         public void action() {
             ACLMessage msg = myAgent.receive();
             if (msg != null && msg.getPerformative() == ACLMessage.INFORM) {
                 String mealPlanContent = msg.getContent();
-                List<Recipe> mealPlan = convertContentToMealPlan(mealPlanContent);
-                assert mealPlan != null;
-                userService.saveMealPlan(user.getUsername(), mealPlan);
-                myAgent.doDelete();
+                System.out.println("User Agent received meal plan: " + mealPlanContent);
+
+                Set<Long> mealPlan = convertContentToMealPlan(mealPlanContent);
+                if(mealPlan != null){
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy");
+                    String formattedDate = dateFormat.format(new Date());
+                    String mealPlanName = user.getUsername() + "_AIGenerated_" + formattedDate + "_" + (remainingDays) + "_days";
+                    //mealPlanService.createMealPlan(mealPlanName, user, mealPlan);
+                    remainingDays--;
+                }
+
+                if(remainingDays<=0){
+                    myAgent.doDelete();
+                }
+
             } else {
                 block();
             }
         }
 
-        private List<Recipe> convertContentToMealPlan(String content) {
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                return Arrays.asList(mapper.readValue(content, Recipe[].class));
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
+        public Set<Long> convertContentToMealPlan(String content) {
+             Set<Long> recipeIds = Arrays.stream(content.split(","))
+                    .map(Long::parseLong)
+                    .collect(Collectors.toSet());
+             return  recipeIds;
         }
     }
 
