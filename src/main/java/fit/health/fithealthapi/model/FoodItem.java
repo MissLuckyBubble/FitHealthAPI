@@ -56,7 +56,6 @@ public class FoodItem {
     @Column(name = "HealthConditionSuitability")
     private Set<HealthConditionSuitability> healthConditionSuitability = new HashSet<>();
 
-    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;

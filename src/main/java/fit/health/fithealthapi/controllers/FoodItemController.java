@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
@@ -71,38 +72,42 @@ public class FoodItemController {
             @RequestParam(value = "sort", required = false) String sort
     ) {
         try {
-            // Parse filters
-            Map<String, String> filters = filter != null
-                    ? new ObjectMapper().readValue(filter, new TypeReference<Map<String, String>>() {})
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            // ✅ Parse filters correctly (allowing arrays)
+            Map<String, Object> filters = filter != null
+                    ? objectMapper.readValue(filter, new TypeReference<Map<String, Object>>() {})
                     : Collections.emptyMap();
 
-            // Parse range
+            // ✅ Parse range
             int start = 0, end = 10;
             if (range != null) {
-                int[] rangeArray = new ObjectMapper().readValue(range, int[].class);
+                int[] rangeArray = objectMapper.readValue(range, int[].class);
                 start = rangeArray[0];
                 end = rangeArray[1] + 1;
             }
 
-            // Parse sort
+            // ✅ Parse sort
             String sortField = "id";
             String sortOrder = "ASC";
             if (sort != null) {
-                String[] sortArray = new ObjectMapper().readValue(sort, String[].class);
+                String[] sortArray = objectMapper.readValue(sort, String[].class);
                 sortField = sortArray[0];
                 sortOrder = sortArray[1];
             }
 
-            // Fetch food items with filters, sorting, and pagination
+            // ✅ Fetch filtered results
             List<FoodItem> foodItems = foodService.getAllWithFilters(filters, sortField, sortOrder, start, end);
 
-            // Total count for pagination
+            // ✅ Get total count
             long total = foodService.getTotalCount(filters);
 
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Range", "foodItems " + start + "-" + (end - 1) + "/" + total);
 
             return ResponseEntity.ok().headers(headers).body(foodItems);
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid filter format: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
         }

@@ -54,8 +54,6 @@ public class MealItem {
     @Column(nullable = false)
     private boolean verifiedByAdmin = false;
 
-    @PrePersist
-    @PreUpdate
     public void prePersist() {
         calculateMacronutrients();
         updateMealItemData();
@@ -73,7 +71,7 @@ public class MealItem {
     @Column(name = "allergen")
     private Set<Allergen> allergens = new HashSet<>();
 
-    @ElementCollection(fetch = FetchType.EAGER, targetClass = Allergen.class)
+    @ElementCollection(fetch = FetchType.EAGER, targetClass = HealthConditionSuitability.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "meal_item_suitabilities", joinColumns = @JoinColumn(name = "meal_item_id"))
     @Column(name = "suitabilities")
@@ -81,16 +79,18 @@ public class MealItem {
 
     public void updateMealItemData() {
         if (recipe != null) {
-            this.name = recipe.getName();
-            this.verifiedByAdmin = recipe.isVerifiedByAdmin();
-            this.dietaryPreferences = new HashSet<>(recipe.getDietaryPreferences());
-            this.allergens = new HashSet<>(recipe.getAllergens());
+            getPreferences(recipe.getName(), recipe.isVerifiedByAdmin(), recipe.getDietaryPreferences(), recipe.getAllergens(), recipe.getHealthConditionSuitability());
         } else if (foodItem != null) {
-            this.name = foodItem.getName();
-            this.verifiedByAdmin = foodItem.isVerifiedByAdmin();
-            this.dietaryPreferences = new HashSet<>(foodItem.getDietaryPreferences());
-            this.allergens = new HashSet<>(foodItem.getAllergens());
+            getPreferences(foodItem.getName(), foodItem.isVerifiedByAdmin(), foodItem.getDietaryPreferences(), foodItem.getAllergens(), foodItem.getHealthConditionSuitability());
         }
+    }
+
+    private void getPreferences(String name, boolean verifiedByAdmin, Set<DietaryPreference> dietaryPreferences, Set<Allergen> allergens, Set<HealthConditionSuitability> healthConditionSuitability) {
+        this.name = name;
+        this.verifiedByAdmin = verifiedByAdmin;
+        this.dietaryPreferences = new HashSet<>(dietaryPreferences);
+        this.allergens = new HashSet<>(allergens);
+        this.healthConditionSuitabilities = new HashSet<>(healthConditionSuitability);
     }
 
     public void calculateMacronutrients() {

@@ -1,4 +1,6 @@
 package fit.health.fithealthapi.services;
+import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
+import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.Macronutrients;
 import fit.health.fithealthapi.model.Recipe;
@@ -13,10 +15,7 @@ import fit.health.fithealthapi.repository.RecipeRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +49,11 @@ public class FoodItemService {
         return foodItemRepository.save(foodItem);
     }
 
+    @Transactional(readOnly = true)
+    public FoodItem getById(Long id) {
+        return foodItemRepository.findById(id)
+                .orElseThrow(() -> new IngredientNotFoundException("Food item not found with ID: " + id));
+    }
     /**
      * Update an existing FoodItem in both the ontology and the database.
      * @param id The ID of the FoodItem to update.
@@ -89,7 +93,8 @@ public class FoodItemService {
     }
 
     private void updateFoodFields(FoodItem updatedFoodItem, FoodItem existingFoodItem) {
-        existingFoodItem.setMacronutrients(existingFoodItem.getMacronutrients());
+        existingFoodItem.getMacronutrients().reset();
+        existingFoodItem.getMacronutrients().add(updatedFoodItem.getMacronutrients());
         existingFoodItem.setAllergens(new HashSet<>(updatedFoodItem.getAllergens()));
         existingFoodItem.setDietaryPreferences(new HashSet<>(updatedFoodItem.getDietaryPreferences()));
         existingFoodItem.setHealthConditionSuitability(new HashSet<>(updatedFoodItem.getHealthConditionSuitability()));
@@ -166,26 +171,29 @@ public class FoodItemService {
         return foodItemRepository.findByName(name);
     }
 
-    public List<FoodItem> getAllWithFilters(Map<String, String> filters, String sortField, String sortOrder, int start, int end) {
+    public List<FoodItem> getAllWithFilters(Map<String, Object> filters, String sortField, String sortOrder, int start, int end) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<FoodItem> query = cb.createQuery(FoodItem.class);
         Root<FoodItem> foodItem = query.from(FoodItem.class);
 
-        // Add dynamic filters
         Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            predicate = cb.and(predicate, cb.equal(foodItem.get(filter.getKey()), filter.getValue()));
+        for (Map.Entry<String, Object> filter : filters.entrySet()) {
+            Path<Object> field = foodItem.get(filter.getKey());
+
+            if (filter.getValue() instanceof List<?>) {
+                predicate = cb.and(predicate, field.in((List<?>) filter.getValue()));
+            } else {
+                predicate = cb.and(predicate, cb.equal(field, filter.getValue()));
+            }
         }
         query.where(predicate);
 
-        // Add sorting
         if ("ASC".equalsIgnoreCase(sortOrder)) {
             query.orderBy(cb.asc(foodItem.get(sortField)));
-        } else if ("DESC".equalsIgnoreCase(sortOrder)) {
+        } else {
             query.orderBy(cb.desc(foodItem.get(sortField)));
         }
 
-        // Execute the query with pagination
         TypedQuery<FoodItem> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(start);
         typedQuery.setMaxResults(end - start + 1);
@@ -193,19 +201,24 @@ public class FoodItemService {
         return typedQuery.getResultList();
     }
 
-    public long getTotalCount(Map<String, String> filters) {
+
+    public long getTotalCount(Map<String, Object> filters) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> query = cb.createQuery(Long.class);
         Root<FoodItem> foodItem = query.from(FoodItem.class);
 
-        // Add dynamic filters
         Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            predicate = cb.and(predicate, cb.equal(foodItem.get(filter.getKey()), filter.getValue()));
+        for (Map.Entry<String, Object> filter : filters.entrySet()) {
+            Path<Object> field = foodItem.get(filter.getKey());
+
+            if (filter.getValue() instanceof List<?>) {
+                predicate = cb.and(predicate, field.in((List<?>) filter.getValue()));
+            } else {
+                predicate = cb.and(predicate, cb.equal(field, filter.getValue()));
+            }
         }
         query.where(predicate);
 
-        // Set count query
         query.select(cb.count(foodItem));
 
         return entityManager.createQuery(query).getSingleResult();

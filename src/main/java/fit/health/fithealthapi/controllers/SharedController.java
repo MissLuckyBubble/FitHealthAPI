@@ -1,12 +1,6 @@
 package fit.health.fithealthapi.controllers;
 
-import fit.health.fithealthapi.model.enums.Allergen;
-import fit.health.fithealthapi.model.enums.DietaryPreference;
-import fit.health.fithealthapi.model.enums.Gender;
-import fit.health.fithealthapi.model.enums.HealthCondition;
-import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
-import fit.health.fithealthapi.model.enums.RecipeType;
-import fit.health.fithealthapi.model.enums.Unit;
+import fit.health.fithealthapi.model.enums.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,6 +52,8 @@ public class SharedController {
 
     @GetMapping("/enums")
     public ResponseEntity<Map<String, List<?>>> getAllEnums() {
+        List<Visibility> k;
+        k = List.of(Visibility.values());
         return ResponseEntity.ok(Map.of(
                 "preferences", List.of(DietaryPreference.values()),
                 "allergens", List.of(Allergen.values()),
@@ -65,7 +61,8 @@ public class SharedController {
                 "genders", List.of(Gender.values()),
                 "healthConditionSuitability", List.of(HealthConditionSuitability.values()),
                 "recipeTypes", List.of(RecipeType.values()),
-                "units", List.of(Unit.values())
+                "units", List.of(Unit.values()),
+                "visibilityOptions", List.of(Visibility.values())
         ));
     }
 }

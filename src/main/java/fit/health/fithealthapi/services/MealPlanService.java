@@ -55,6 +55,18 @@ public class MealPlanService {
     }
 
     public MealPlan updateMealPlan(MealPlan mealPlan) {
+        if(mealPlan.getBreakfast() != null && mealPlan.getBreakfast().getId()!=null) {
+            mealPlan.setBreakfast(mealRepository.findById(mealPlan.getBreakfast().getId()).orElseThrow(() -> new NotFoundException("Breakfast not found")));
+        }
+        if(mealPlan.getLunch() != null && mealPlan.getLunch().getId()!=null) {
+            mealPlan.setLunch(mealRepository.findById(mealPlan.getLunch().getId()).orElseThrow(() -> new NotFoundException("Lunch not found")));
+        }
+        if(mealPlan.getDinner() != null && mealPlan.getDinner().getId()!=null) {
+            mealPlan.setDinner(mealRepository.findById(mealPlan.getDinner().getId()).orElseThrow(() -> new NotFoundException("Dinner not found")));
+        }
+        if(mealPlan.getSnack() != null){
+            mealPlan.setSnack(mealRepository.findById(mealPlan.getSnack().getId()).orElseThrow(() -> new NotFoundException("Snack not found")));
+        }
         return mealPlanRepository.save(mealPlan);
     }
 

@@ -57,7 +57,7 @@ public class MealPlan {
 
     @ElementCollection(fetch = FetchType.EAGER, targetClass = HealthConditionSuitability.class)
     @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "meal_conditions", joinColumns = @JoinColumn(name = "meal_id"))
+    @CollectionTable(name = "meal_plan_conditions", joinColumns = @JoinColumn(name = "meal_plan_id"))
     @Column(name = "health_condition_suitability")
     private Set<HealthConditionSuitability> healthConditionSuitability = new HashSet<>();
 

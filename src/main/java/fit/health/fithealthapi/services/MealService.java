@@ -25,11 +25,42 @@ public class MealService {
     private final MealItemRepository mealItemRepository;
     private final RecipeRepository recipeRepository;
     private final FoodItemRepository foodItemRepository;
+    private final RecipeService recipeService;
+    private final FoodItemService foodItemService;
 
     @Transactional
-    public Meal createMeal(CreateMealRequestDto mealDto, User user){
-        return processMealRequest(mealDto, user);
+    public Meal createMeal(Meal meal, User user){
+        meal.setUser(user);
+        setMealItems(meal);
+        try {
+            updateMealData(meal);
+            return mealRepository.save(meal);
+        }catch (Exception e){
+           System.out.println(e.getMessage());
+        }
+        return meal;
     }
+
+    private void setMealItems(Meal meal) {
+        if(meal.getMealItems() != null){
+            for(MealItem item : meal.getMealItems()){
+                item.setMeal(meal);
+                if(item.getRecipe()!=null){
+                    Recipe recipe = recipeService.getRecipeById(item.getRecipe().getId());
+                    item.setRecipe(recipe);
+                    item.setFoodItem(null);
+                }else if(item.getFoodItem()!=null){
+                    FoodItem foodItem = foodItemService.getById(item.getFoodItem().getId());
+                    item.setFoodItem(foodItem);
+                    item.setRecipe(null);
+                }else{
+                    throw new InvalidRequestException("Each meal item must have either a recipe or a food item");
+                }
+                item.prePersist();
+            }
+        }
+    }
+
     public List<Meal> getUserMeals(User user) {
         return mealRepository.findByUser(user);
     }
@@ -47,7 +78,14 @@ public class MealService {
         existingMeal.setName(meal.getName());
         existingMeal.setRecipeType(meal.getRecipeType());
         existingMeal.setVisibility(meal.getVisibility());
-        return mealRepository.save(existingMeal);
+        setMealItems(meal);
+        try {
+            updateMealData(meal);
+            return mealRepository.save(meal);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        return meal;
     }
 
     @Transactional
@@ -94,7 +132,7 @@ public class MealService {
         } else {
             throw new InvalidRequestException("Either recipeId or foodItemId must be provided.");
         }
-
+        mealItem.prePersist();
         mealItemRepository.save(mealItem);
         Set<MealItem> mealItems = meal.getMealItems() != null ? meal.getMealItems() : new HashSet<>();
         mealItems.add(mealItem);
