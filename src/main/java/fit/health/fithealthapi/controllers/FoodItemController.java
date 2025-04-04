@@ -1,10 +1,9 @@
 package fit.health.fithealthapi.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.QueryParams;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.SearchRequest;
 import fit.health.fithealthapi.model.enums.Allergen;
@@ -15,29 +14,32 @@ import fit.health.fithealthapi.services.FoodItemService;
 import fit.health.fithealthapi.services.SharedService;
 import fit.health.fithealthapi.services.UserService;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import static fit.health.fithealthapi.utils.QueryParamParser.parse;
 
 @RestController
 @RequestMapping("/food-items")
 public class FoodItemController {
 
-    @Autowired
-    private FoodItemService foodService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private SharedService sharedService;
+    private final FoodItemService foodService;
+    private final UserService userService;
+    private final SharedService sharedService;
+    private final FoodItemService foodItemService;
+
+    public FoodItemController(FoodItemService foodService, UserService userService, SharedService sharedService, FoodItemService foodItemService) {
+        this.foodService = foodService;
+        this.userService = userService;
+        this.sharedService = sharedService;
+        this.foodItemService = foodItemService;
+    }
+
     /**
      * Create a new FoodItem.
      *
@@ -70,47 +72,9 @@ public class FoodItemController {
             @RequestParam(value = "filter", required = false) String filter,
             @RequestParam(value = "range", required = false) String range,
             @RequestParam(value = "sort", required = false) String sort
-    ) {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-
-            // ✅ Parse filters correctly (allowing arrays)
-            Map<String, Object> filters = filter != null
-                    ? objectMapper.readValue(filter, new TypeReference<Map<String, Object>>() {})
-                    : Collections.emptyMap();
-
-            // ✅ Parse range
-            int start = 0, end = 10;
-            if (range != null) {
-                int[] rangeArray = objectMapper.readValue(range, int[].class);
-                start = rangeArray[0];
-                end = rangeArray[1] + 1;
-            }
-
-            // ✅ Parse sort
-            String sortField = "id";
-            String sortOrder = "ASC";
-            if (sort != null) {
-                String[] sortArray = objectMapper.readValue(sort, String[].class);
-                sortField = sortArray[0];
-                sortOrder = sortArray[1];
-            }
-
-            // ✅ Fetch filtered results
-            List<FoodItem> foodItems = foodService.getAllWithFilters(filters, sortField, sortOrder, start, end);
-
-            // ✅ Get total count
-            long total = foodService.getTotalCount(filters);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Range", "foodItems " + start + "-" + (end - 1) + "/" + total);
-
-            return ResponseEntity.ok().headers(headers).body(foodItems);
-        } catch (JsonProcessingException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid filter format: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
-        }
+    ) throws JsonProcessingException {
+        QueryParams<String> params = parse(filter, range, sort, String.class);
+        return ResponseEntity.ok(foodItemService.getAllWithFilters(params.getFilters(), params.getSortField(), params.getSortOrder(), params.getStart(), params.getEnd()));
     }
 
     /**

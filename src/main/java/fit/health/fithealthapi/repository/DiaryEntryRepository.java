@@ -11,6 +11,6 @@ import java.util.Optional;
 
 @Repository
 public interface DiaryEntryRepository extends JpaRepository<DiaryEntry, Long> {
-    List<DiaryEntry> findByUser(User user);
-    Optional<DiaryEntry> findByUserAndDate(User user, LocalDate date);
+    List<DiaryEntry> findByOwner(User user);
+    Optional<DiaryEntry> findByOwnerAndDate(User user, LocalDate date);
 }

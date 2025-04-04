@@ -52,8 +52,6 @@ public class SharedController {
 
     @GetMapping("/enums")
     public ResponseEntity<Map<String, List<?>>> getAllEnums() {
-        List<Visibility> k;
-        k = List.of(Visibility.values());
         return ResponseEntity.ok(Map.of(
                 "preferences", List.of(DietaryPreference.values()),
                 "allergens", List.of(Allergen.values()),

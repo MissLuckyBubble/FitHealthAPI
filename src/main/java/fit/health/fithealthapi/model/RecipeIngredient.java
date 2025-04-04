@@ -1,8 +1,6 @@
 package fit.health.fithealthapi.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import fit.health.fithealthapi.model.enums.Unit;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

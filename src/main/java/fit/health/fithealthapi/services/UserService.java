@@ -1,13 +1,9 @@
 package fit.health.fithealthapi.services;
 
 import fit.health.fithealthapi.exceptions.UserNotFoundException;
-import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.LoginUserDTO;
-import fit.health.fithealthapi.model.enums.ActivityLevel;
-import fit.health.fithealthapi.model.enums.Gender;
-import fit.health.fithealthapi.model.enums.Goal;
-import fit.health.fithealthapi.model.enums.Role;
+import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -15,7 +11,6 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
@@ -27,10 +22,13 @@ import java.util.Optional;
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private EntityManager entityManager;
+    private final UserRepository userRepository;
+    private final EntityManager entityManager;
+
+    public UserService(UserRepository userRepository, EntityManager entityManager) {
+        this.userRepository = userRepository;
+        this.entityManager = entityManager;
+    }
 
     public User saveUser(LoginUserDTO user) {
         Optional<User> userOptional = userRepository.findByUsername(user.getUsername());
@@ -128,23 +126,6 @@ public class UserService {
         return org.springframework.security.crypto.bcrypt.BCrypt.checkpw(rawPassword, hashedPassword);
     }
 
-    public boolean addFavoriteRecipe(Long userId, Recipe recipe) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
-        if(user.getFavoriteRecipes().add(recipe)){
-            userRepository.save(user);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean removeFavoriteRecipe(Long userId, Recipe recipe) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
-        if(user.getFavoriteRecipes().remove(recipe)){
-            userRepository.save(user);
-            return true;
-        }
-        return false;
-    }
 
     public void deleteUser(Long id) {
         userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -163,8 +144,14 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public List<Recipe> getFavoriteRecipes(Long userId) {
-        return userRepository.findFavoriteRecipesByUserId(userId);
+    private Predicate buildUserPredicate(CriteriaBuilder cb, Root<User> user, Map<String, String> filters) {
+        Predicate predicate = cb.conjunction();
+
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
+            predicate = cb.and(predicate, cb.equal(user.get(filter.getKey()), filter.getValue()));
+        }
+
+        return predicate;
     }
 
     public List<User> getAllWithFilters(Map<String, String> filters, String sortField, String sortOrder, int start, int end) {
@@ -172,21 +159,15 @@ public class UserService {
         CriteriaQuery<User> query = cb.createQuery(User.class);
         Root<User> user = query.from(User.class);
 
-        // Add dynamic filters
-        Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            predicate = cb.and(predicate, cb.equal(user.get(filter.getKey()), filter.getValue()));
-        }
+        Predicate predicate = buildUserPredicate(cb, user, filters);
         query.where(predicate);
 
-        // Add sorting
         if ("ASC".equalsIgnoreCase(sortOrder)) {
             query.orderBy(cb.asc(user.get(sortField)));
         } else if ("DESC".equalsIgnoreCase(sortOrder)) {
             query.orderBy(cb.desc(user.get(sortField)));
         }
 
-        // Execute the query with pagination
         TypedQuery<User> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(start);
         typedQuery.setMaxResults(end - start + 1);
@@ -199,18 +180,11 @@ public class UserService {
         CriteriaQuery<Long> query = cb.createQuery(Long.class);
         Root<User> user = query.from(User.class);
 
-        // Add dynamic filters
-        Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            predicate = cb.and(predicate, cb.equal(user.get(filter.getKey()), filter.getValue()));
-        }
+        Predicate predicate = buildUserPredicate(cb, user, filters);
         query.where(predicate);
 
-        // Set count query
         query.select(cb.count(user));
-
         return entityManager.createQuery(query).getSingleResult();
     }
-
 }
 

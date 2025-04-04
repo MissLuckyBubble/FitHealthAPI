@@ -1,6 +1,5 @@
 package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
-import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.Macronutrients;
 import fit.health.fithealthapi.model.Recipe;
@@ -16,7 +15,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,16 +25,19 @@ import java.util.stream.Collectors;
 @Service
 public class FoodItemService {
 
-    @Autowired
-    private FoodItemRepository foodItemRepository;
-    @Autowired
-    private RecipeRepository recipeRepository;
-    @Autowired
-    private OntologyService ontologyService;
-    @Autowired
-    private EntityManager entityManager;
-    @Autowired
-    private SharedService sharedService;
+    private final FoodItemRepository foodItemRepository;
+    private final RecipeRepository recipeRepository;
+    private final OntologyService ontologyService;
+    private final EntityManager entityManager;
+    private final SharedService sharedService;
+
+    public FoodItemService(FoodItemRepository foodItemRepository, RecipeRepository recipeRepository, OntologyService ontologyService, EntityManager entityManager, SharedService sharedService) {
+        this.foodItemRepository = foodItemRepository;
+        this.recipeRepository = recipeRepository;
+        this.ontologyService = ontologyService;
+        this.entityManager = entityManager;
+        this.sharedService = sharedService;
+    }
 
     // ===================== Food Item Operations =====================
 
@@ -97,7 +98,7 @@ public class FoodItemService {
         existingFoodItem.getMacronutrients().add(updatedFoodItem.getMacronutrients());
         existingFoodItem.setAllergens(new HashSet<>(updatedFoodItem.getAllergens()));
         existingFoodItem.setDietaryPreferences(new HashSet<>(updatedFoodItem.getDietaryPreferences()));
-        existingFoodItem.setHealthConditionSuitability(new HashSet<>(updatedFoodItem.getHealthConditionSuitability()));
+        existingFoodItem.setHealthConditionSuitabilities(new HashSet<>(updatedFoodItem.getHealthConditionSuitabilities()));
     }
 
     private boolean ontologyFieldAreEqual(FoodItem updatedFoodItem, FoodItem existingFoodItem) {
@@ -163,7 +164,7 @@ public class FoodItemService {
         return allFoodItems.stream()
                 .filter(foodItem -> foodItem.getDietaryPreferences().containsAll(searchRequest.getDietaryPreferences()))
                 .filter(foodItem -> Collections.disjoint(foodItem.getAllergens(), searchRequest.getAllergens()))
-                .filter(foodItem -> foodItem.getHealthConditionSuitability().containsAll(searchRequest.getHealthSuitabilities()))
+                .filter(foodItem -> foodItem.getHealthConditionSuitabilities().containsAll(searchRequest.getHealthSuitabilities()))
                 .collect(Collectors.toList());
     }
 
@@ -171,21 +172,12 @@ public class FoodItemService {
         return foodItemRepository.findByName(name);
     }
 
-    public List<FoodItem> getAllWithFilters(Map<String, Object> filters, String sortField, String sortOrder, int start, int end) {
+    public List<FoodItem> getAllWithFilters(Map<String, ? extends Object> filters, String sortField, String sortOrder, int start, int end) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<FoodItem> query = cb.createQuery(FoodItem.class);
         Root<FoodItem> foodItem = query.from(FoodItem.class);
 
-        Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, Object> filter : filters.entrySet()) {
-            Path<Object> field = foodItem.get(filter.getKey());
-
-            if (filter.getValue() instanceof List<?>) {
-                predicate = cb.and(predicate, field.in((List<?>) filter.getValue()));
-            } else {
-                predicate = cb.and(predicate, cb.equal(field, filter.getValue()));
-            }
-        }
+        Predicate predicate = buildFoodItemPredicate(cb, foodItem, (Map<String, Object>) filters);
         query.where(predicate);
 
         if ("ASC".equalsIgnoreCase(sortOrder)) {
@@ -201,31 +193,37 @@ public class FoodItemService {
         return typedQuery.getResultList();
     }
 
-
     public long getTotalCount(Map<String, Object> filters) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> query = cb.createQuery(Long.class);
         Root<FoodItem> foodItem = query.from(FoodItem.class);
 
-        Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, Object> filter : filters.entrySet()) {
-            Path<Object> field = foodItem.get(filter.getKey());
-
-            if (filter.getValue() instanceof List<?>) {
-                predicate = cb.and(predicate, field.in((List<?>) filter.getValue()));
-            } else {
-                predicate = cb.and(predicate, cb.equal(field, filter.getValue()));
-            }
-        }
+        Predicate predicate = buildFoodItemPredicate(cb, foodItem, filters);
         query.where(predicate);
-
         query.select(cb.count(foodItem));
 
         return entityManager.createQuery(query).getSingleResult();
     }
 
 
+
     // ===================== Helper Methods =====================
+
+    private Predicate buildFoodItemPredicate(CriteriaBuilder cb, Root<FoodItem> foodItem, Map<String, Object> filters) {
+        Predicate predicate = cb.conjunction();
+
+        for (Map.Entry<String, Object> filter : filters.entrySet()) {
+            Path<Object> field = foodItem.get(filter.getKey());
+
+            if (filter.getValue() instanceof List<?> list) {
+                predicate = cb.and(predicate, field.in(list));
+            } else {
+                predicate = cb.and(predicate, cb.equal(field, filter.getValue()));
+            }
+        }
+
+        return predicate;
+    }
 
     private void addDataProperties(FoodItem foodItem) {
         ontologyService.createItemType(foodItem.getOntologyLinkedName(), "FoodItem");
@@ -254,7 +252,7 @@ public class FoodItemService {
     private void inferPreferences(FoodItem foodItem) {
         InferredPreferences inferredPreferences = ontologyService.inferPreferences(foodItem.getOntologyLinkedName());
         foodItem.setDietaryPreferences(inferredPreferences.getDietaryPreferences());
-        foodItem.setHealthConditionSuitability(inferredPreferences.getHealthConditionSuitabilities());
+        foodItem.setHealthConditionSuitabilities(inferredPreferences.getHealthConditionSuitabilities());
     }
 
     // ===================== Filtering Methods =====================
@@ -273,7 +271,7 @@ public class FoodItemService {
 
     private List<FoodItem> filterFoodItemsByHealthConditions(List<FoodItem> foodItems, List<HealthConditionSuitability> preferences) {
         return foodItems.stream()
-                .filter(foodItem -> foodItem.getHealthConditionSuitability().containsAll(preferences))
+                .filter(foodItem -> foodItem.getHealthConditionSuitabilities().containsAll(preferences))
                 .collect(Collectors.toList());
     }
 }

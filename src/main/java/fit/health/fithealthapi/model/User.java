@@ -1,6 +1,5 @@
 package fit.health.fithealthapi.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import fit.health.fithealthapi.model.enums.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -53,6 +52,9 @@ public class User {
     @Column(name = "allergens")
     private Set<Allergen> allergens = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserPreference> preferences = new HashSet<>();
+
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -61,43 +63,4 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Goal goal;
-
-    @JsonIgnore
-    @ManyToMany
-    @JoinTable(
-            name = "user_favorite_recipes",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "recipe_id")
-    )
-    private Set<Recipe> favoriteRecipes = new HashSet<>();
-
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_disliked_recipes", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "disliked_recipe_id")
-    private Set<Long> dislikedRecipes = new HashSet<>();
-
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_disliked_foods", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "disliked_food")
-    private Set<Long> dislikedFoodItems = new HashSet<>();
-
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_favorite_foods", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "favorite_food")
-    private Set<Long> favoriteFoodItems = new HashSet<>();
-
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_disliked_meals", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "disliked_meal")
-    private Set<Long> dislikedMeals = new HashSet<>();
-
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_favorite_meal", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "favorite_meal")
-    private Set<Long> favoriteMeals = new HashSet<>();
 }

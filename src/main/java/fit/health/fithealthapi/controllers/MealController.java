@@ -52,9 +52,9 @@ public class MealController {
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(existingMeal -> {
-                    if (!existingMeal.getUser().equals(user))
+                    if (!existingMeal.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
-                    meal.setUser(user);
+                    meal.setOwner(user);
                     return ResponseEntity.ok(mealService.updateMeal(meal,id));
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found"));
@@ -71,7 +71,7 @@ public class MealController {
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(meal -> {
-                    if (!meal.getUser().equals(user))
+                    if (!meal.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
 
                     mealService.deleteMeal(id);

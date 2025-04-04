@@ -10,6 +10,6 @@ import java.util.List;
 
 @Repository
 public interface MealRepository extends JpaRepository<Meal, Long> {
-    List<Meal> findByUser(User user);
+    List<Meal> findByOwner(User user);
     List<Meal> findByVisibility(Visibility visibility);
 }

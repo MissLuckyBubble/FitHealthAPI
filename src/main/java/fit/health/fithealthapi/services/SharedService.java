@@ -1,7 +1,6 @@
 package fit.health.fithealthapi.services;
 
 import fit.health.fithealthapi.model.enums.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -9,8 +8,11 @@ import java.util.List;
 
 @Service
 public class SharedService {
-    @Autowired
-    OntologyService ontologyService;
+    private final OntologyService ontologyService;
+
+    public SharedService(OntologyService ontologyService) {
+        this.ontologyService = ontologyService;
+    }
 
 
     HealthConditionSuitability mapToSuitability(HealthCondition condition) {
