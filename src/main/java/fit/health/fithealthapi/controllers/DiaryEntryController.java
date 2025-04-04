@@ -50,7 +50,7 @@ public class DiaryEntryController {
     @GetMapping
     public ResponseEntity<List<DiaryEntry>> getUserDiaryEntries() {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(diaryEntryService.getUserDiaryEntries(user));
+        return ResponseEntity.ok(diaryEntryService.getOwnerDiaryEntries(user));
     }
 
     @PutMapping("/{id}")

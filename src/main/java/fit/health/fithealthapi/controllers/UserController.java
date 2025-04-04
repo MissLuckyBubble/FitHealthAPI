@@ -2,16 +2,12 @@ package fit.health.fithealthapi.controllers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
 import fit.health.fithealthapi.exceptions.UserNotFoundException;
-import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.EditUserDTO;
 import fit.health.fithealthapi.model.dto.LoginUserDTO;
 import fit.health.fithealthapi.model.enums.Role;
-import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,10 +26,11 @@ import java.util.Map;
 @RequestMapping("/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private RecipeService recipeService;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PostMapping()
     public ResponseEntity<?> registerUser(@RequestBody LoginUserDTO userDTO) {
@@ -100,51 +97,6 @@ public class UserController {
         }
     }
 
-    @PostMapping("/{userId}/favorite-recipes/{recipeId}")
-    public ResponseEntity<?> addFavoriteRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
-        try {
-            Recipe recipe = recipeService.getRecipeById(recipeId);
-
-            if (userService.addFavoriteRecipe(userId, recipe)) {
-                return ResponseEntity.status(HttpStatus.CREATED)
-                        .body("Recipe with ID " + recipeId + " successfully added to user with ID " + userId + "'s favorites.");
-            }
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Recipe is already in the user's favorites");
-        } catch (RecipeNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found.");
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/{userId}/favorite-recipes/{recipeId}")
-    public ResponseEntity<?> removeFavoriteRecipe(@PathVariable Long userId, @PathVariable Long recipeId) {
-        try {
-            Recipe recipe = recipeService.getRecipeById(recipeId);
-
-            if (userService.removeFavoriteRecipe(userId, recipe)) {
-                return ResponseEntity.ok("Recipe with ID " + recipeId + " successfully removed from user with ID " + userId + "'s favorites.");
-            }
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Recipe is not in the user's favorites.");
-        } catch (RecipeNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found.");
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred: " + e.getMessage());
-        }
-    }
-    @GetMapping("/{userId}/favorite-recipes")
-    public ResponseEntity<?> getFavoriteRecipes(@PathVariable Long userId) {
-        List<Recipe> recipeList = userService.getFavoriteRecipes(userId);
-        return ResponseEntity.ok(recipeList);
-    }
 
     @GetMapping()
     public ResponseEntity<?> getAllUsers(
@@ -156,7 +108,8 @@ public class UserController {
 
             // Parse filters
             Map<String, String> filters = filter != null
-                    ? new ObjectMapper().readValue(filter, new TypeReference<Map<String, String>>() {})
+                    ? new ObjectMapper().readValue(filter, new TypeReference<>() {
+            })
                     : Collections.emptyMap();
 
             // Parse range

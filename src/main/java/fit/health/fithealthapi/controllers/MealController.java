@@ -1,8 +1,8 @@
 package fit.health.fithealthapi.controllers;
 
 import fit.health.fithealthapi.model.Meal;
+import fit.health.fithealthapi.model.MealItem;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
 import fit.health.fithealthapi.services.MealService;
 import fit.health.fithealthapi.services.UserService;
@@ -27,10 +27,10 @@ public class MealController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createMeal(@RequestBody CreateMealRequestDto mealDto) {
-        User user = getAuthenticatedUser();
+    public ResponseEntity<?> createMeal(@RequestBody Meal meal) {
+         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
-        Meal createdMeal = mealService.createMeal(mealDto, user);
+        Meal createdMeal = mealService.createMeal(meal, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdMeal);
     }
 
@@ -52,11 +52,18 @@ public class MealController {
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(existingMeal -> {
-                    if (!existingMeal.getUser().equals(user))
+                    if (!existingMeal.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+                    meal.setOwner(user);
                     return ResponseEntity.ok(mealService.updateMeal(meal,id));
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found"));
+    }
+
+    @PutMapping("{id}/meal-item")
+    public ResponseEntity<?> assignMealItem(@PathVariable Long id, @RequestBody MealItem mealItem) {
+        User user = getAuthenticatedUser();
+        return ResponseEntity.ok(null);
     }
 
     @DeleteMapping("/{id}")
@@ -64,7 +71,7 @@ public class MealController {
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(meal -> {
-                    if (!meal.getUser().equals(user))
+                    if (!meal.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
 
                     mealService.deleteMeal(id);

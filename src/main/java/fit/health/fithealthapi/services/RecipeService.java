@@ -9,15 +9,12 @@ import fit.health.fithealthapi.model.dto.InferredPreferences;
 import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
 import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.repository.RecipeRepository;
-import fit.health.fithealthapi.repository.UserRepository;
+import fit.health.fithealthapi.repository.UserPreferenceRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.criteria.*;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,25 +23,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class RecipeService {
 
-    @Autowired
-    private RecipeRepository recipeRepository;
-
-    @Autowired
-    private FoodItemService foodItemService;
-
-    @Autowired
-    private OntologyService ontologyService;
-
-    @Autowired
-    private SharedService sharedService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private EntityManager entityManager;
+    private final RecipeRepository recipeRepository;
+    private final FoodItemService foodItemService;
+    private final OntologyService ontologyService;
+    private final SharedService sharedService;
+    private final EntityManager entityManager;
+    private final UserPreferenceRepository userPreferenceRepository;
 
     // ===================== Recipe CRUD Operations =====================
 
@@ -131,7 +118,7 @@ public class RecipeService {
     private void inferPreferences(Recipe recipe) {
         InferredPreferences inferredPreferences = ontologyService.inferPreferences(recipe.getOntologyLinkedName());
         recipe.setDietaryPreferences(inferredPreferences.getDietaryPreferences());
-        recipe.setHealthConditionSuitability(inferredPreferences.getHealthConditionSuitabilities());
+        recipe.setHealthConditionSuitabilities(inferredPreferences.getHealthConditionSuitabilities());
     }
 
     private void inferAllergens(Recipe recipe) {
@@ -251,13 +238,11 @@ public class RecipeService {
         Comparator<Recipe> calorieComparator;
 
         if (goal == Goal.GAIN_SLOW || goal == Goal.GAIN_FAST) {
-            // ✅ High-calorie recipes first for weight gain
             calorieComparator = Comparator.comparing(
                     (Recipe recipe) -> recipe.getMacronutrients().getCalories(), // Explicitly declare type
                     Comparator.nullsLast(Float::compare)
             ).reversed();
         } else {
-            // ✅ Low-calorie recipes first for weight loss
             calorieComparator = Comparator.comparing(
                     (Recipe recipe) -> recipe.getMacronutrients().getCalories(),
                     Comparator.nullsLast(Float::compare)
@@ -271,7 +256,7 @@ public class RecipeService {
 
 
     public int getFavoriteCount(Long recipeId) {
-        return userRepository.countUsersByFavoriteRecipeId(recipeId);
+        return userPreferenceRepository.countByItemTypeAndItemIdAndPreferenceType(UserItemType.RECIPE, recipeId, PreferenceType.LIKE);
     }
 
     public List<Recipe> getAllWithFilters(Map<String, String> filters, String sortField, String sortOrder, int start, int end) {
@@ -279,46 +264,26 @@ public class RecipeService {
         CriteriaQuery<Recipe> query = cb.createQuery(Recipe.class);
         Root<Recipe> recipe = query.from(Recipe.class);
 
-        // Add dynamic filters
         Predicate predicate = cb.conjunction();
+
         for (Map.Entry<String, String> filter : filters.entrySet()) {
             predicate = cb.and(predicate, cb.equal(recipe.get(filter.getKey()), filter.getValue()));
         }
+
         query.where(predicate);
 
-        // Add sorting
         if ("ASC".equalsIgnoreCase(sortOrder)) {
             query.orderBy(cb.asc(recipe.get(sortField)));
         } else if ("DESC".equalsIgnoreCase(sortOrder)) {
             query.orderBy(cb.desc(recipe.get(sortField)));
         }
 
-        // Execute the query with pagination
         TypedQuery<Recipe> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(start);
         typedQuery.setMaxResults(end - start + 1);
 
         return typedQuery.getResultList();
     }
-
-    public long getTotalCount(Map<String, String> filters) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> query = cb.createQuery(Long.class);
-        Root<Recipe> recipe = query.from(Recipe.class);
-
-        // Add dynamic filters
-        Predicate predicate = cb.conjunction();
-        for (Map.Entry<String, String> filter : filters.entrySet()) {
-            predicate = cb.and(predicate, cb.equal(recipe.get(filter.getKey()), filter.getValue()));
-        }
-        query.where(predicate);
-
-        // Set count query
-        query.select(cb.count(recipe));
-
-        return entityManager.createQuery(query).getSingleResult();
-    }
-
 
 
     // ===================== Recipe Filter Helper Methods =====================
@@ -336,7 +301,7 @@ public class RecipeService {
     }
 
     private boolean matchesHealthConditions(Recipe recipe, List<HealthConditionSuitability> conditions) {
-        return conditions == null || recipe.getHealthConditionSuitability().containsAll(conditions);
+        return conditions == null || recipe.getHealthConditionSuitabilities().containsAll(conditions);
     }
 
     private boolean matchesRecipeTypes(Recipe recipe, List<RecipeType> recipeTypes) {

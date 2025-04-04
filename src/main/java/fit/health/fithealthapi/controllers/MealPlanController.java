@@ -32,14 +32,14 @@ public class MealPlanController {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
 
-        mealPlan.setUser(user);
+        mealPlan.setOwner(user);
         return ResponseEntity.status(HttpStatus.CREATED).body(mealPlanService.createMealPlan(mealPlan));
     }
 
     @GetMapping
-    public ResponseEntity<List<MealPlan>> getUserMealPlans() {
+    public ResponseEntity<List<MealPlan>> getOwnerMealPlans() {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(mealPlanService.getUserMealPlans(user));
+        return ResponseEntity.ok(mealPlanService.getOwnerMealPlans(user));
     }
 
     @GetMapping("/{id}")
@@ -54,11 +54,11 @@ public class MealPlanController {
         User user = getAuthenticatedUser();
         return mealPlanService.getMealPlanById(id)
                 .map(existingPlan -> {
-                    if (!existingPlan.getUser().equals(user))
+                    if (!existingPlan.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
 
                     mealPlan.setId(id);
-                    mealPlan.setUser(user);
+                    mealPlan.setOwner(user);
                     return ResponseEntity.ok(mealPlanService.updateMealPlan(mealPlan));
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
@@ -69,7 +69,7 @@ public class MealPlanController {
         User user = getAuthenticatedUser();
         return mealPlanService.getMealPlanById(id)
                 .map(mealPlan -> {
-                    if (!mealPlan.getUser().equals(user))
+                    if (!mealPlan.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
 
                     mealPlanService.deleteMealPlan(id);

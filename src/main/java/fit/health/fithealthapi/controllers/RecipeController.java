@@ -1,7 +1,9 @@
 package fit.health.fithealthapi.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
+import fit.health.fithealthapi.model.QueryParams;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
@@ -9,7 +11,6 @@ import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.SharedService;
 import fit.health.fithealthapi.services.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,16 +19,21 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static fit.health.fithealthapi.utils.QueryParamParser.parse;
+
 @RestController
 @RequestMapping("recipes")
 public class RecipeController {
 
-    @Autowired
-    private RecipeService recipeService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private SharedService sharedService;
+    private final RecipeService recipeService;
+    private final UserService userService;
+    private final SharedService sharedService;
+
+    public RecipeController(RecipeService recipeService, UserService userService, SharedService sharedService) {
+        this.recipeService = recipeService;
+        this.userService = userService;
+        this.sharedService = sharedService;
+    }
 
     /**
      * Create a new recipe.
@@ -44,15 +50,6 @@ public class RecipeController {
         recipe.setOwner(owner);
         Recipe createdRecipe = recipeService.saveRecipe(recipe);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdRecipe);
-    }
-
-    /**
-     * Get all recipes.
-     */
-    @GetMapping
-    public ResponseEntity<List<Recipe>> getAllRecipes() {
-        List<Recipe> recipes = recipeService.getAllRecipes();
-        return ResponseEntity.ok(recipes);
     }
 
     /**
@@ -120,6 +117,16 @@ public class RecipeController {
               searchRequest
         );
         return ResponseEntity.ok(recipes);
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllRecipes(
+            @RequestParam(value = "filter", required = false) String filter,
+            @RequestParam(value = "range", required = false) String range,
+            @RequestParam(value = "sort", required = false) String sort
+    ) throws JsonProcessingException {
+        QueryParams<String> params = parse(filter, range, sort, String.class);
+        return ResponseEntity.ok(recipeService.getAllWithFilters(params.getFilters(), params.getSortField(), params.getSortOrder(), params.getStart(), params.getEnd()));
     }
 
 }
