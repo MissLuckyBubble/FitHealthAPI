@@ -1,9 +1,12 @@
 package fit.health.fithealthapi.controllers;
 
-import fit.health.fithealthapi.model.Meal;
-import fit.health.fithealthapi.model.MealItem;
-import fit.health.fithealthapi.model.User;
+import fit.health.fithealthapi.exceptions.NotFoundException;
+import fit.health.fithealthapi.model.*;
+import fit.health.fithealthapi.model.dto.MealDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.repository.FoodItemRepository;
+import fit.health.fithealthapi.repository.MealRepository;
+import fit.health.fithealthapi.repository.RecipeRepository;
 import fit.health.fithealthapi.services.MealService;
 import fit.health.fithealthapi.services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/meals")
@@ -20,6 +25,9 @@ import java.util.List;
 public class MealController {
     private final MealService mealService;
     private final UserService userService;
+    private final RecipeRepository recipeRepository;
+    private final FoodItemRepository foodItemRepository;
+    private final MealRepository mealRepository;
 
     private User getAuthenticatedUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -27,11 +35,12 @@ public class MealController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createMeal(@RequestBody Meal meal) {
-         User user = getAuthenticatedUser();
-        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
-        Meal createdMeal = mealService.createMeal(meal, user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdMeal);
+    public ResponseEntity<?> createMeal(@RequestBody MealDto dto) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userService.getUserByUsername(username);
+
+        Meal saved = mealService.createMealFromDto(dto, user);
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping
@@ -48,14 +57,13 @@ public class MealController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateMeal(@PathVariable Long id, @RequestBody Meal meal) {
+    public ResponseEntity<?> updateMeal(@PathVariable Long id, @RequestBody MealDto dto) {
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(existingMeal -> {
                     if (!existingMeal.getOwner().equals(user))
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
-                    meal.setOwner(user);
-                    return ResponseEntity.ok(mealService.updateMeal(meal,id));
+                    return ResponseEntity.ok(mealService.updateMealFromDto(dto,id,user));
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found"));
     }

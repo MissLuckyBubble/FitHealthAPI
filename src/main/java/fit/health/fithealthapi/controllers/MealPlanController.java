@@ -1,10 +1,12 @@
 package fit.health.fithealthapi.controllers;
 
+import fit.health.fithealthapi.model.Meal;
 import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
 import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/meal-plans")
@@ -52,16 +56,17 @@ public class MealPlanController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMealPlan(@PathVariable Long id, @RequestBody MealPlan mealPlan) {
         User user = getAuthenticatedUser();
-        return mealPlanService.getMealPlanById(id)
-                .map(existingPlan -> {
-                    if (!existingPlan.getOwner().equals(user))
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
-
-                    mealPlan.setId(id);
-                    mealPlan.setOwner(user);
-                    return ResponseEntity.ok(mealPlanService.updateMealPlan(mealPlan));
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
+        Optional<MealPlan> optionalMealPlan = mealPlanService.getMealPlanById(id);
+        if(optionalMealPlan.isPresent()) {
+            MealPlan existingPlan = optionalMealPlan.get();
+            if (Objects.equals(existingPlan.getOwner().getId(), user.getId()) || user.getRole() == Role.ADMIN){
+                mealPlan.setId(id);
+                mealPlan.setOwner(user);
+                return ResponseEntity.ok(mealPlanService.createMealPlan(mealPlan));
+            }
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+        }
+        else return (ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal plan not found"));
     }
 
     @DeleteMapping("/{id}")

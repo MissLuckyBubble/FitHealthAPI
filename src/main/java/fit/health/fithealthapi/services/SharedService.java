@@ -1,19 +1,22 @@
 package fit.health.fithealthapi.services;
 
+import fit.health.fithealthapi.model.FoodItem;
+import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.enums.*;
+import fit.health.fithealthapi.repository.FoodItemRepository;
+import fit.health.fithealthapi.repository.RecipeRepository;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@AllArgsConstructor
 public class SharedService {
     private final OntologyService ontologyService;
-
-    public SharedService(OntologyService ontologyService) {
-        this.ontologyService = ontologyService;
-    }
-
+    private final RecipeRepository recipeRepository;
+    private final FoodItemRepository foodItemRepository;
 
     HealthConditionSuitability mapToSuitability(HealthCondition condition) {
         return switch (condition) {
@@ -66,5 +69,4 @@ public class SharedService {
         }
         return convertToPascalCase(input).replaceAll("\\s+", "_");
     }
-
 }

@@ -1,6 +1,9 @@
 package fit.health.fithealthapi.controllers;
 
+import fit.health.fithealthapi.model.dto.MealComponentDto;
 import fit.health.fithealthapi.model.enums.*;
+import fit.health.fithealthapi.services.MealComponentService;
+import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,8 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@AllArgsConstructor
 public class SharedController {
 
+    private final MealComponentService mealComponentService;
     // ===================== Enum Endpoints =====================
 
     @GetMapping("/preferences")
@@ -62,5 +67,10 @@ public class SharedController {
                 "units", List.of(Unit.values()),
                 "visibilityOptions", List.of(Visibility.values())
         ));
+    }
+
+    @GetMapping("/meal-components")
+    public ResponseEntity<List<MealComponentDto>> getAllMealComponents(){
+        return ResponseEntity.ok(mealComponentService.getAllComponents());
     }
 }

@@ -32,6 +32,7 @@ public class RecipeService {
     private final SharedService sharedService;
     private final EntityManager entityManager;
     private final UserPreferenceRepository userPreferenceRepository;
+    private final VerificationPropagationService verificationPropagationService;
 
     // ===================== Recipe CRUD Operations =====================
 
@@ -39,9 +40,6 @@ public class RecipeService {
     public Recipe saveRecipe(Recipe recipe) {
         String ontName = sharedService.convertToOntoCase(recipe.getName() + new SimpleDateFormat("yyyyHHmmss").format(new java.util.Date()));
         recipe.setOntologyLinkedName(ontName);
-        for(var item : recipe.getIngredients()){
-            item.setFoodItem(foodItemService.findById(item.getFoodItem().getId()));
-        }
         calculateNutritionalValues(recipe);
         addRecipeToOntology(recipe);
         inferPreferences(recipe);
@@ -55,7 +53,8 @@ public class RecipeService {
         Recipe existingRecipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Recipe not found"));
 
-        if(!areOntoFieldsEqual(updatedRecipe, existingRecipe)){
+        if(!areOntoFieldsEqual(existingRecipe, updatedRecipe)){
+            updatedRecipe.setOntologyLinkedName(existingRecipe.getOntologyLinkedName());
             ontologyService.removeDefinedClass(sharedService.convertToOntoCase(updatedRecipe.getOntologyLinkedName()));
             ontologyService.removeObjectPropertyRestrictions(updatedRecipe.getOntologyLinkedName());
 
@@ -63,9 +62,17 @@ public class RecipeService {
             addRecipeToOntology(updatedRecipe);
             inferPreferences(updatedRecipe);
         }
-        inferAllergens(updatedRecipe);
         updateRecipeFields(existingRecipe, updatedRecipe);
-        return recipeRepository.save(existingRecipe);
+        inferAllergens(existingRecipe);
+        existingRecipe.checkAndUpdateVerification();
+        existingRecipe.setVerifiedByAdmin(true);
+        Recipe saved =  recipeRepository.saveAndFlush(existingRecipe);
+        System.out.println("id = " + saved.getId());
+        System.out.println("Saved verified = " + saved.isVerifiedByAdmin());
+        verificationPropagationService.onRecipeUpdated(saved);
+        Recipe fresh = recipeRepository.findById(saved.getId()).get();
+        System.out.println("Fresh from DB verified = " + fresh.isVerifiedByAdmin());
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +137,8 @@ public class RecipeService {
         if (allergens.isEmpty()) {
             allergens.add(Allergen.ALLERGEN_FREE);
         }
-        recipe.setAllergens(allergens);
+        recipe.getAllergens().clear();
+        recipe.getAllergens().addAll(allergens);
     }
 
     private void addRecipeToOntology(Recipe recipe) {
@@ -173,9 +181,9 @@ public class RecipeService {
         existingRecipe.setServingSize(updatedRecipe.getServingSize());
         existingRecipe.setMacronutrients(updatedRecipe.getMacronutrients());
         existingRecipe.setDietaryPreferences(updatedRecipe.getDietaryPreferences());
+        existingRecipe.setHealthConditionSuitabilities(updatedRecipe.getHealthConditionSuitabilities());
         existingRecipe.setRecipeTypes(updatedRecipe.getRecipeTypes());
         existingRecipe.setIngredients(updatedRecipe.getIngredients());
-        existingRecipe.checkAndUpdateVerification();
     }
 
     private boolean areOntoFieldsEqual(Recipe existingRecipe, Recipe updatedRecipe) {
@@ -183,16 +191,6 @@ public class RecipeService {
             return false;
         }
 
-        boolean areNutritionalValuesEqual =
-                Objects.equals(existingRecipe.getMacronutrients().getCalories(), updatedRecipe.getMacronutrients().getCalories()) &&
-                Objects.equals(existingRecipe.getMacronutrients().getFat(), updatedRecipe.getMacronutrients().getFat()) &&
-                Objects.equals(existingRecipe.getMacronutrients().getProtein(), updatedRecipe.getMacronutrients().getProtein()) &&
-                Objects.equals(existingRecipe.getMacronutrients().getSalt(), updatedRecipe.getMacronutrients().getSalt()) &&
-                Objects.equals(existingRecipe.getMacronutrients().getSugar(), updatedRecipe.getMacronutrients().getSugar());
-
-        if (!areNutritionalValuesEqual) {
-            return false;
-        }
         Set<RecipeIngredient> existingIngredients = existingRecipe.getIngredients();
         Set<RecipeIngredient> updatedIngredients = updatedRecipe.getIngredients();
 

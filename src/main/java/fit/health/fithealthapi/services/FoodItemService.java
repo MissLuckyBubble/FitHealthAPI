@@ -15,6 +15,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,21 +24,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class FoodItemService {
 
     private final FoodItemRepository foodItemRepository;
-    private final RecipeRepository recipeRepository;
+    private final VerificationPropagationService verificationPropagationService;
     private final OntologyService ontologyService;
     private final EntityManager entityManager;
     private final SharedService sharedService;
-
-    public FoodItemService(FoodItemRepository foodItemRepository, RecipeRepository recipeRepository, OntologyService ontologyService, EntityManager entityManager, SharedService sharedService) {
-        this.foodItemRepository = foodItemRepository;
-        this.recipeRepository = recipeRepository;
-        this.ontologyService = ontologyService;
-        this.entityManager = entityManager;
-        this.sharedService = sharedService;
-    }
 
     // ===================== Food Item Operations =====================
 
@@ -46,7 +40,6 @@ public class FoodItemService {
         foodItem.setOntologyLinkedName(ontologyLinkedName);
         addDataProperties(foodItem);
         inferPreferences(foodItem);
-        updateRecipes(foodItem);
         return foodItemRepository.save(foodItem);
     }
 
@@ -77,20 +70,8 @@ public class FoodItemService {
 
         existingFoodItem.setName(updatedFoodItem.getName());
         existingFoodItem.setVerifiedByAdmin(updatedFoodItem.isVerifiedByAdmin());
-        updateRecipes(existingFoodItem);
+        verificationPropagationService.onFoodItemUpdated(updatedFoodItem);
         return foodItemRepository.save(existingFoodItem);
-    }
-
-    private void updateRecipes(FoodItem foodItem){
-        Set<RecipeIngredient> ingredients = foodItem.getRecipes();
-        for (RecipeIngredient ingredient : ingredients) {
-            Recipe recipe = ingredient.getRecipe();
-            if (recipe != null) {
-                recipe.checkAndUpdateVerification();
-                recipeRepository.save(recipe);
-            }
-        }
-
     }
 
     private void updateFoodFields(FoodItem updatedFoodItem, FoodItem existingFoodItem) {

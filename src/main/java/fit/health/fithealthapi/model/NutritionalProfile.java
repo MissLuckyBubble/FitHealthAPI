@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
@@ -39,10 +40,12 @@ public abstract class NutritionalProfile {
     @Enumerated(EnumType.STRING)
     protected Set<HealthConditionSuitability> healthConditionSuitabilities = new HashSet<>();
 
+    @Column(nullable = false)
     protected boolean verifiedByAdmin = false;
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnoreProperties({"recipes", "preferences", "healthConditions", "allergens", "dietaryPreferences"})
     protected User owner;
 }
 

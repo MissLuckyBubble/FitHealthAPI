@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,5 +23,6 @@ public class RecipeTypeWrapper {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipe_id")
+    @JsonIgnore
     private Recipe recipe;
 }

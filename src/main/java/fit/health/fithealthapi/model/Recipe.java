@@ -67,11 +67,12 @@ public class Recipe extends MealComponent{
         }
     }
 
-    @Column(nullable = false)
-    private boolean verifiedByAdmin = false;
-
     public void checkAndUpdateVerification() {
-        this.verifiedByAdmin = ingredients.stream()
+        boolean allVerified = ingredients.stream()
                 .allMatch(ingredient -> ingredient.getFoodItem().isVerifiedByAdmin());
+
+        if (this.verifiedByAdmin != allVerified) {
+            this.verifiedByAdmin = allVerified;
+        }
     }
 }

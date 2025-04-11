@@ -30,15 +30,12 @@ public class Meal extends NutritionalProfile implements NutritionalSource, MealA
     @Column(name = "meal_type")
     private Set<RecipeType> recipeTypes = new HashSet<>();
 
-    @OneToMany(mappedBy = "meal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "meal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private Set<MealItem> mealItems = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Visibility visibility = Visibility.PRIVATE;
-
-    @Column(nullable = false)
-    private boolean verifiedByAdmin = false;
 
     public void updateMealData() {
         recalculateMacronutrients();

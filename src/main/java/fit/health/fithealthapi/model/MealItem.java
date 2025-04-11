@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
+import fit.health.fithealthapi.model.enums.Unit;
 import fit.health.fithealthapi.utils.MacronutrientCalculator;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -34,11 +35,12 @@ public class MealItem extends NutritionalProfile{
     @JoinColumn(name = "component_id", nullable = false)
     private MealComponent component;
 
-    @Column(nullable = true)
-    private Float portionSize; // Servings (if recipe-based)
+    @Column(nullable = false)
+    private Float quantity;
 
-    @Column(nullable = true)
-    private Float weightGrams; // Grams (if food-based)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Unit unit;
 
 
     public void updateData() {
@@ -66,7 +68,6 @@ public class MealItem extends NutritionalProfile{
 
     public void calculateMacronutrients() {
         if (component == null) return;
-
-        this.macronutrients = MacronutrientCalculator.calculate(component, portionSize, weightGrams);
+        this.macronutrients = MacronutrientCalculator.calculate(component, quantity, unit);
     }
 }

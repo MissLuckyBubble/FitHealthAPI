@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 public enum Unit {
-    GRAMS("Grams", 1.0f),             // Base unit (1 gram = 1 gram)
+    GRAMS("Grams", 1.0f),// Base unit (1 gram = 1 gram)
+    SERVING("Serving", 100.0f), //1 serving = 100gram for foods
     KILOGRAMS("Kilograms", 1000.0f),  // 1 kilogram = 1000 grams
     MILLILITERS("Milliliters", 1.0f), // Assuming 1 milliliter = 1 gram (water-like density)
     LITERS("Liters", 1000.0f),        // 1 liter = 1000 grams (water-like density)

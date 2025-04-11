@@ -1,6 +1,7 @@
 package fit.health.fithealthapi.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import fit.health.fithealthapi.model.enums.Unit;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -34,4 +35,5 @@ public class RecipeIngredient {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Unit unit;
+
 }

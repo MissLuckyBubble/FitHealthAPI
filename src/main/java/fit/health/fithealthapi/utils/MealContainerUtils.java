@@ -67,15 +67,14 @@ public class MealContainerUtils {
     }
 
     private static void updateMacronutrients(MealContainer container) {
-        if (container.getMacronutrients() == null)
-            container.setMacronutrients(new Macronutrients());
-        container.getMacronutrients().reset();
+        Macronutrients macronutrients = new Macronutrients();
 
         for (Meal meal : container.getMeals()) {
             if (meal != null && meal.getMacronutrients() != null) {
-                container.getMacronutrients().add(meal.getMacronutrients());
+                macronutrients.add(meal.getMacronutrients());
             }
         }
+        container.setMacronutrients(macronutrients);
     }
 
     public static void removeMealByType(MealContainer container, RecipeType type) {

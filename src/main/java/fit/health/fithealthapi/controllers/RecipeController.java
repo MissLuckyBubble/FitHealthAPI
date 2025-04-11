@@ -3,14 +3,15 @@ package fit.health.fithealthapi.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
-import fit.health.fithealthapi.model.QueryParams;
-import fit.health.fithealthapi.model.Recipe;
-import fit.health.fithealthapi.model.User;
+import fit.health.fithealthapi.model.*;
+import fit.health.fithealthapi.model.dto.RecipeDTO;
 import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
 import fit.health.fithealthapi.model.enums.*;
+import fit.health.fithealthapi.services.FoodItemService;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.SharedService;
 import fit.health.fithealthapi.services.UserService;
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,36 +19,50 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static fit.health.fithealthapi.utils.QueryParamParser.parse;
 
 @RestController
 @RequestMapping("recipes")
+@AllArgsConstructor
 public class RecipeController {
 
     private final RecipeService recipeService;
     private final UserService userService;
     private final SharedService sharedService;
-
-    public RecipeController(RecipeService recipeService, UserService userService, SharedService sharedService) {
-        this.recipeService = recipeService;
-        this.userService = userService;
-        this.sharedService = sharedService;
-    }
+    private final FoodItemService foodItemService;
 
     /**
      * Create a new recipe.
      */
     @PostMapping
-    public ResponseEntity<?> createRecipe(@RequestBody Recipe recipe) {
+    public ResponseEntity<?> createRecipe(@RequestBody RecipeDTO recipeDTO) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-
         User owner = userService.getUserByUsername(username);
         if (owner == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
         }
 
+        Recipe recipe = getRecipe(recipeDTO);
         recipe.setOwner(owner);
+
+        Set<RecipeIngredient> ingredients = recipeDTO.getIngredients().stream().map(dto -> {
+            RecipeIngredient ri = new RecipeIngredient();
+            ri.setRecipe(recipe);
+            ri.setQuantity(dto.getQuantity());
+            ri.setUnit(dto.getUnit());
+
+            // 💡 SAFELY fetch the full entity here
+            FoodItem food = foodItemService.findById(dto.getFoodItem());
+            ri.setFoodItem(food);
+
+            return ri;
+        }).collect(Collectors.toSet());
+
+        recipe.setIngredients(ingredients);
+
         Recipe createdRecipe = recipeService.saveRecipe(recipe);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdRecipe);
     }
@@ -71,23 +86,58 @@ public class RecipeController {
      * Update an existing recipe.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe, Authentication authentication) {
+    public ResponseEntity<?> updateRecipe(@PathVariable Long id,
+                                          @RequestBody RecipeDTO updatedDTO,
+                                          Authentication authentication) {
         try {
             String currentUsername = authentication.getName();
             User currentUser = userService.getUserByUsername(currentUsername);
-            if (!currentUser.getRole().equals(Role.ADMIN) && !currentUser.getId().equals(recipeService.getRecipeById(id).getOwner().getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You don't have permission to update this meal plan.");
+            Recipe existing = recipeService.getRecipeById(id);
+
+            if (!currentUser.getRole().equals(Role.ADMIN) &&
+                    !currentUser.getId().equals(existing.getOwner().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You don't have permission to update this recipe.");
             }
-            Recipe recipe = recipeService.updateRecipe(id, updatedRecipe);
-            return ResponseEntity.ok(recipe);
+
+            Recipe updated = getRecipe(updatedDTO);
+            updated.setOwner(existing.getOwner());
+
+            Set<RecipeIngredient> ingredients = updatedDTO.getIngredients().stream().map(dto -> {
+                RecipeIngredient ri = new RecipeIngredient();
+                ri.setQuantity(dto.getQuantity());
+                ri.setUnit(dto.getUnit());
+
+                FoodItem food = foodItemService.findById(dto.getFoodItem());
+                ri.setFoodItem(food);
+                ri.setRecipe(updated);
+                return ri;
+            }).collect(Collectors.toSet());
+
+            updated.setIngredients(ingredients);
+
+            Recipe saved = recipeService.updateRecipe(id, updated);
+            return ResponseEntity.ok(saved);
+
         } catch (RecipeNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Recipe not found");
         } catch (IngredientNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid ingredient");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected error");
         }
     }
+
+    private static Recipe getRecipe(RecipeDTO updatedDTO) {
+        Recipe updated = new Recipe();
+        updated.setName(updatedDTO.getName());
+        updated.setDescription(updatedDTO.getDescription());
+        updated.setPreparationTime(updatedDTO.getPreparationTime());
+        updated.setCookingTime(updatedDTO.getCookingTime());
+        updated.setServingSize(updatedDTO.getServingSize());
+        updated.setRecipeTypes(updatedDTO.getRecipeTypes());
+        return updated;
+    }
+
 
     /**
      * Delete a recipe by ID.
