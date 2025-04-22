@@ -56,11 +56,11 @@ public class MealPlanService {
     }
 
     public Optional<MealPlan> getMealPlanById(Long id) {
-        return mealPlanRepository.findById(id);
+        return mealPlanRepository.findWithMealsById(id);
     }
 
     public void setMeal(CreateMealRequestDto assignMealDto) {
-        MealPlan mealPlan = mealPlanRepository.findById(assignMealDto.getDiaryEntryId()).orElseThrow(()->new MealPlanNotFoundException("Meal not found"));
+        MealPlan mealPlan = mealPlanRepository.findWithMealsById(assignMealDto.getDiaryEntryId()).orElseThrow(()->new MealPlanNotFoundException("Meal not found"));
         Meal meal = mealRepository.findById(assignMealDto.getMealId()).orElseThrow(()-> new NotFoundException("Meal not found"));
 
         switch (assignMealDto.getRecipeType()) {

@@ -8,7 +8,12 @@ import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.repository.DiaryEntryRepository;
+import fit.health.fithealthapi.repository.MealItemRepository;
+import fit.health.fithealthapi.repository.MealPlanRepository;
+import fit.health.fithealthapi.repository.MealRepository;
 import fit.health.fithealthapi.utils.MealContainerUtils;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,15 +21,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class DiaryEntryService {
     private final DiaryEntryRepository diaryEntryRepository;
     private final MealService mealService;
+    private final MealItemRepository mealItemRepository;
+    private final MealRepository mealRepository;
+    private final MealPlanRepository mealPlanRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public DiaryEntry createDiaryEntry(User user, LocalDate date) {
-        if (diaryEntryRepository.findByOwnerAndDate(user, date).isPresent()) {
+        if (diaryEntryRepository.findByOwnerIdAndDate(user.getId(), date).isPresent()) {
             throw new InvalidRequestException("A diary entry for this date already exists.");
         }
 
@@ -37,7 +48,7 @@ public class DiaryEntryService {
     }
 
     public Optional<DiaryEntry> getDiaryEntry(User user, LocalDate date) {
-        return diaryEntryRepository.findByOwnerAndDate(user, date);
+        return diaryEntryRepository.findByOwnerIdAndDate(user.getId(), date);
     }
 
     public List<DiaryEntry> getOwnerDiaryEntries(User user) {
@@ -62,33 +73,54 @@ public class DiaryEntryService {
     @Transactional
     public DiaryEntry assignMealToDiary(CreateMealRequestDto dto, User user) {
 
-        Optional<DiaryEntry> optionalDiaryEntry = dto.getDiaryEntryId()!= null ?  diaryEntryRepository.findById(dto.getDiaryEntryId()) : Optional.empty();
-        DiaryEntry diaryEntry = new DiaryEntry();
-        if (optionalDiaryEntry.isEmpty()) {
-            Optional<DiaryEntry> optional = diaryEntryRepository.findByOwnerAndDate(user,dto.getDate()!=null ? dto.getDate() : LocalDate.now());
-            if (optional.isPresent()) {
-                diaryEntry = optional.get();
-            }else {
-                diaryEntry.setOwner(user);
-                diaryEntry.setDate(dto.getDate()!=null ? dto.getDate() : LocalDate.now());
-                diaryEntry.setDailyCalorieGoal(user.getDailyCalorieGoal());
+        try {
+            Optional<DiaryEntry> optionalDiaryEntry = dto.getDiaryEntryId() != null ? diaryEntryRepository.findById(dto.getDiaryEntryId()) : Optional.empty();
+            DiaryEntry diaryEntry = new DiaryEntry();
+
+            if (optionalDiaryEntry.isEmpty()) {
+                Optional<DiaryEntry> optional = diaryEntryRepository.findByOwnerIdAndDate(user.getId(), dto.getDate() != null ? dto.getDate() : LocalDate.now());
+                if (optional.isPresent()) {
+                    diaryEntry = optional.get();
+                } else {
+                    diaryEntry.setOwner(user);
+                    diaryEntry.setDate(dto.getDate() != null ? dto.getDate() : LocalDate.now());
+                    diaryEntry.setDailyCalorieGoal(user.getDailyCalorieGoal());
+                }
+            } else {
+                diaryEntry = optionalDiaryEntry.get();
             }
-        }
-        else {
-            diaryEntry = optionalDiaryEntry.get();
-        }
 
-        Meal meal = mealService.processMealRequest(dto, user);
+            Meal meal = MealContainerUtils.ensureMealSlot(diaryEntry, dto.getRecipeType(), () -> createNewMeal(dto, user));
 
-        switch (dto.getRecipeType()) {
-            case BREAKFAST -> diaryEntry.setBreakfast(meal);
-            case LUNCH -> diaryEntry.setLunch(meal);
-            case DINNER -> diaryEntry.setDinner(meal);
-            case SNACK -> diaryEntry.setSnack(meal);
+            if (dto.getMealId() != null) {
+                Meal original = mealRepository.findById(dto.getMealId())
+                        .orElseThrow(() -> new NotFoundException("Original meal not found"));
+                MealContainerUtils.copyMealItemsSafeAppend(original, meal, user, mealItemRepository, dto.getQuantity(),entityManager);
+            } else {
+                mealService.addMealItemToMeal(dto, meal, user);
+            }
+
+            MealContainerUtils.updateMealContainerData(diaryEntry);
+
+            calculate(diaryEntry);
+            return diaryEntryRepository.save(diaryEntry);
+        }catch (Exception e){
+            e.printStackTrace();
         }
-        calculate(diaryEntry);
-        return  diaryEntryRepository.save(diaryEntry);
+        return null;
     }
+
+    private Meal createNewMeal(CreateMealRequestDto dto, User user) {
+        Meal meal = new Meal();
+        meal.setName(dto.getMealName() != null ? dto.getMealName() : "");
+        meal.setOwner(user);
+        if (dto.getRecipeType() != null) {
+            meal.getRecipeTypes().add(dto.getRecipeType());
+        }
+        meal.setMacronutrients(new Macronutrients());
+        return mealRepository.save(meal);
+    }
+
 
     public DiaryEntry removeMeal(Long dairyId, RecipeType recipeType, User user) {
         DiaryEntry diaryEntry = diaryEntryRepository.findById(dairyId).orElseThrow(()->new MealPlanNotFoundException("Dairy not found."));
@@ -100,6 +132,14 @@ public class DiaryEntryService {
         return diaryEntryRepository.save(diaryEntry);
     }
 
+    public void removeMealItem(Long mealItemId, User user){
+        Meal meal = mealService.removeMealItem(mealItemId,user);
+        for(DiaryEntry diaryEntry : diaryEntryRepository.findByAnyMeal(meal)){
+            calculate(diaryEntry);
+            diaryEntryRepository.save(diaryEntry);
+        }
+    }
+
     public void calculate(DiaryEntry diaryEntry) {
         if (diaryEntry.getOwner() != null) {
             diaryEntry.setDailyCalorieGoal(diaryEntry.getOwner().getDailyCalorieGoal());
@@ -108,4 +148,60 @@ public class DiaryEntryService {
         MealContainerUtils.updateMealContainerData(diaryEntry);
     }
 
+    @Transactional
+    public void copyMealPlanToDiary(Long mealPlanId, LocalDate date, User user) {
+        MealPlan mealPlan = mealPlanRepository.findWithMealsById(mealPlanId)
+                .orElseThrow(() -> new NotFoundException("Meal Plan not found"));
+
+        Optional<DiaryEntry> optionalDiaryEntry = diaryEntryRepository
+                .findByOwnerIdAndDate(user.getId(), date);
+        DiaryEntry diary;
+        if (optionalDiaryEntry.isPresent()) {
+            diary = optionalDiaryEntry.get();
+        }else {
+            diary = new DiaryEntry();
+            diary.setOwner(user);
+            diary.setDate(date);
+            diary.setDailyCalorieGoal(user.getDailyCalorieGoal());
+            diary.setMacronutrients(new Macronutrients());
+            try {
+                diaryEntryRepository.save(diary);
+            }catch (Exception e){
+                System.out.println(e.getMessage());
+            }
+        }
+        for (RecipeType type : RecipeType.values()) {
+            Meal meal = MealContainerUtils.getMealByType(mealPlan, type);
+            if (meal != null) {
+                Meal targetMeal = MealContainerUtils.ensureMealSlot(diary, type, () -> {
+                    Meal newMeal = new Meal();
+                    newMeal.setOwner(user);
+                    newMeal.setName(meal.getName());
+                    newMeal.setRecipeTypes(Set.of(type));
+                    newMeal.setMacronutrients(new Macronutrients());
+                    return mealRepository.save(newMeal);
+                });
+
+                try {
+                    MealContainerUtils.copyMealItemsSafeAppend(
+                            meal,
+                            targetMeal,
+                            user,
+                            mealItemRepository,
+                            1f,
+                            entityManager
+                    );
+                }catch (Exception e){
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        entityManager.flush();
+
+        MealContainerUtils.updateMealContainerData(diary);
+        calculate(diary);
+        diaryEntryRepository.save(diary);
+    }
 }

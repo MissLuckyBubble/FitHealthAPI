@@ -14,8 +14,6 @@ import java.util.Map;
 @RestController
 @AllArgsConstructor
 public class SharedController {
-
-    private final MealComponentService mealComponentService;
     // ===================== Enum Endpoints =====================
 
     @GetMapping("/preferences")
@@ -65,12 +63,9 @@ public class SharedController {
                 "healthConditionSuitability", List.of(HealthConditionSuitability.values()),
                 "recipeTypes", List.of(RecipeType.values()),
                 "units", List.of(Unit.values()),
-                "visibilityOptions", List.of(Visibility.values())
+                "visibilityOptions", List.of(Visibility.values()),
+                "activityLevels" , List.of(ActivityLevel.values()),
+                "goals", List.of(Goal.values())
         ));
-    }
-
-    @GetMapping("/meal-components")
-    public ResponseEntity<List<MealComponentDto>> getAllMealComponents(){
-        return ResponseEntity.ok(mealComponentService.getAllComponents());
     }
 }

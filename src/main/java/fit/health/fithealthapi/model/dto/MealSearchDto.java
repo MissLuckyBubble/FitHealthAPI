@@ -15,9 +15,9 @@ import java.util.Set;
 public class MealSearchDto {
     private String query;
     private RecipeType mealType;
-    private Long userId;
+    private Long ownerId;
     private Visibility visibility;
-    private Boolean verifiedByAdmin;
+    private Boolean verifiedOnly;
     private Set<DietaryPreference> dietaryPreferences;
     private Set<HealthConditionSuitability> healthConditions;
     private Set<Allergen> excludeAllergens;

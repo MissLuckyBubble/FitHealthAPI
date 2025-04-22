@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler" })
 @Getter
 @Setter
 @NoArgsConstructor

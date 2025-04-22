@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.health.fithealthapi.model.Meal;
 import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
@@ -7,6 +8,7 @@ import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Role;
+import fit.health.fithealthapi.services.DiaryEntryService;
 import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,6 +28,7 @@ import java.util.Optional;
 public class MealPlanController {
     private final MealPlanService mealPlanService;
     private final UserService userService;
+    private final DiaryEntryService diaryEntryService;
 
     private User getAuthenticatedUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -96,8 +100,32 @@ public class MealPlanController {
         return ResponseEntity.ok(mealPlan);
     }
 
-    @PutMapping("/search")
+    @PostMapping("/search")
     public ResponseEntity<?> searchMealPlans(@RequestBody MealSearchDto searchDto) {
         return ResponseEntity.ok(mealPlanService.searchMealPlan(searchDto));
     }
+
+
+    @PostMapping("{id}/copy-to-diary/{date}")
+    public ResponseEntity<?> copyMealPlanToDiary(
+            @PathVariable LocalDate date, @PathVariable Long id) {
+        User user = getAuthenticatedUser();
+        diaryEntryService.copyMealPlanToDiary(id, date, user);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/debug-meal-plan/{id}")
+    public ResponseEntity<?> debug(@PathVariable Long id) {
+        MealPlan mealPlan = mealPlanService.getMealPlanById(id).orElseThrow();
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.writeValueAsString(mealPlan); // 🔥 will throw if problem
+            return ResponseEntity.ok(mealPlan);
+        } catch (Exception e) {
+            e.printStackTrace(); // look here to see what breaks
+            return ResponseEntity.status(500).body("Manual serialization failed: " + e.getMessage());
+        }
+    }
+
+
 }

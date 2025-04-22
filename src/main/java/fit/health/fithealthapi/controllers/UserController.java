@@ -52,12 +52,8 @@ public class UserController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You don't have permission to edit this user.");
             }
 
-            if (isSelfUpdateWithValidCredentials(currentUser, userDto.getOldPassword()) || isAdmin(currentUser)) {
                 User updatedUser = userService.updateUser(id, userDto.getUser());
                 return ResponseEntity.ok(updatedUser);
-            }
-
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials.");
         } catch (UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         } catch (IllegalArgumentException e) {

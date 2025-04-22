@@ -2,15 +2,11 @@ package fit.health.fithealthapi.services;
 import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.Macronutrients;
-import fit.health.fithealthapi.model.Recipe;
-import fit.health.fithealthapi.model.RecipeIngredient;
 import fit.health.fithealthapi.model.dto.InferredPreferences;
-import fit.health.fithealthapi.model.dto.SearchRequest;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import fit.health.fithealthapi.repository.FoodItemRepository;
-import fit.health.fithealthapi.repository.RecipeRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.TypedQuery;
@@ -138,15 +134,6 @@ public class FoodItemService {
 
     public List<FoodItem> findFoodItemsByHealthConditions(List<HealthConditionSuitability> preferences) {
         return filterFoodItemsByHealthConditions(foodItemRepository.findAll(), preferences);
-    }
-    public List<FoodItem> searchFoodItems(SearchRequest searchRequest) {
-        List<FoodItem> allFoodItems = foodItemRepository.findAll();
-
-        return allFoodItems.stream()
-                .filter(foodItem -> foodItem.getDietaryPreferences().containsAll(searchRequest.getDietaryPreferences()))
-                .filter(foodItem -> Collections.disjoint(foodItem.getAllergens(), searchRequest.getAllergens()))
-                .filter(foodItem -> foodItem.getHealthConditionSuitabilities().containsAll(searchRequest.getHealthSuitabilities()))
-                .collect(Collectors.toList());
     }
 
     public Optional<FoodItem> findByName(String name) {

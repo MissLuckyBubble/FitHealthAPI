@@ -5,7 +5,6 @@ import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.model.FoodItem;
 import fit.health.fithealthapi.model.QueryParams;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.model.dto.SearchRequest;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
@@ -147,28 +146,6 @@ public class FoodItemController {
     @PostMapping("/search/by-preferences")
     public ResponseEntity<List<FoodItem>> getFoodItemsByPreferences(@RequestBody List<DietaryPreference> preferences) {
         List<FoodItem> matchingFoodItems = foodService.findFoodItemsByPreferences(preferences);
-        return ResponseEntity.ok(matchingFoodItems);
-    }
-
-    @PostMapping("/search/without-allergens")
-    public ResponseEntity<List<FoodItem>> getFoodItemsWithoutAllergens(@RequestBody List<Allergen> allergens) {
-        List<FoodItem> matchingFoodItems = foodService.findFoodItemsWithoutAllergens(allergens);
-        return ResponseEntity.ok(matchingFoodItems);
-    }
-
-    @PostMapping("/search/health-condition")
-    public ResponseEntity<List<FoodItem>> getFoodItemsByHealthConditionSuitability (@RequestBody List<String> preferences) {
-        List<HealthConditionSuitability> healthConditionSuitabilities = sharedService.convertToHealthConditionSuitability(preferences);
-        List<FoodItem> matchingFoodItems = foodService.findFoodItemsByHealthConditions(healthConditionSuitabilities);
-        return ResponseEntity.ok(matchingFoodItems);
-    }
-
-    @PostMapping("/search")
-    public ResponseEntity<List<FoodItem>> searchFoodItems(@RequestBody SearchRequest searchRequest) {
-        searchRequest.setHealthSuitabilities(sharedService.convertToHealthConditionSuitability(searchRequest.getHealthConditions()));
-
-        List<FoodItem> matchingFoodItems = foodService.searchFoodItems(searchRequest);
-
         return ResponseEntity.ok(matchingFoodItems);
     }
 }

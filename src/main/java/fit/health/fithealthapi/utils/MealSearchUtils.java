@@ -15,10 +15,11 @@ public class MealSearchUtils {
     public static <T extends MealAggregator> List<T> filterMeals(List<T> meals, MealSearchDto dto) {
         return meals.stream()
                 .filter(meal -> filterByQuery(meal, dto.getQuery()))
-                .filter(meal -> filterByUser(meal, dto.getUserId()))
-                .filter(meal -> filterByVisibility(meal, dto.getUserId()))
+                .filter(meal -> filterByUser(meal, dto.getOwnerId()))
+                .filter(meal -> filterByVisibility(meal, dto.getVisibility()))
                 .filter(meal -> filterByPreferences(meal, dto))
                 .filter(meal -> filterByNutrients(meal, dto))
+                .filter(meal-> filterByVerifiedOnly(meal,dto.getVerifiedOnly()))
                 .sorted(sort(dto))
                 .toList();
     }
@@ -41,9 +42,9 @@ public class MealSearchUtils {
         return item.getOwner() != null && userId.equals(item.getOwner().getId());
     }
 
-    private static boolean filterByVisibility(MealAggregator item, Long userId) {
-        if (userId != null) return true;
-        return item.getVisibility() == Visibility.PUBLIC;
+    private static boolean filterByVisibility(MealAggregator item, Visibility visibility) {
+        if (visibility == null) return true;
+        return item.getVisibility().equals(visibility);
     }
 
     private static boolean filterByPreferences(MealAggregator meal, MealSearchDto dto) {
@@ -108,4 +109,13 @@ public class MealSearchUtils {
 
         return comparator;
     }
+
+    private static boolean filterByVerifiedOnly(MealAggregator meal, Boolean verifiedOnly) {
+        if (verifiedOnly == null || !verifiedOnly) return true;
+        if (meal instanceof NutritionalProfile profile) {
+            return profile.isVerifiedByAdmin();
+        }
+        return true;
+    }
+
 }

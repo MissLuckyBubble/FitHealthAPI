@@ -45,7 +45,7 @@ public abstract class NutritionalProfile {
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
-    @JsonIgnoreProperties({"recipes", "preferences", "healthConditions", "allergens", "dietaryPreferences"})
+    @JsonIgnoreProperties({"recipes", "preferences", "healthConditions", "allergens", "dietaryPreferences","meals", "mealPlans", "recipes", "password", "email"})
     protected User owner;
 }
 

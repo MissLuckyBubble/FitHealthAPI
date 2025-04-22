@@ -5,7 +5,6 @@ import fit.health.fithealthapi.exceptions.IngredientNotFoundException;
 import fit.health.fithealthapi.exceptions.RecipeNotFoundException;
 import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.RecipeDTO;
-import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
 import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.services.FoodItemService;
 import fit.health.fithealthapi.services.RecipeService;
@@ -155,18 +154,6 @@ public class RecipeController {
         } catch (RecipeNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-    }
-
-    @PostMapping("/search")
-    public ResponseEntity<List<Recipe>> searchRecipes(
-            @RequestBody RecipeSearchRequest searchRequest
-    ) {
-
-        searchRequest.setConditionSuitability(sharedService.convertToHealthConditionSuitability(searchRequest.getHealthConditions()));
-        List<Recipe> recipes = recipeService.searchRecipes(
-              searchRequest
-        );
-        return ResponseEntity.ok(recipes);
     }
 
     @GetMapping

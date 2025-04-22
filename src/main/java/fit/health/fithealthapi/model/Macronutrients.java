@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler" })
 public class Macronutrients {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

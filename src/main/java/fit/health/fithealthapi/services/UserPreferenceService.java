@@ -22,6 +22,7 @@ public class UserPreferenceService {
     private final RecipeRepository recipeRepository;
     private final MealRepository mealRepository;
     private final FoodItemRepository foodItemRepository;
+    private final MealPlanRepository mealPlanRepository;
 
     public UserPreference like(User user, UserItemType type, Long itemId) {
         return saveOrUpdate(user, type, itemId, PreferenceType.LIKE);
@@ -67,6 +68,7 @@ public class UserPreferenceService {
             case RECIPE -> recipeRepository.existsById(id);
             case MEAL -> mealRepository.existsById(id);
             case FOOD_ITEM -> foodItemRepository.existsById(id);
+            case MEAL_PLAN -> mealPlanRepository.existsById(id);
         };
     }
 

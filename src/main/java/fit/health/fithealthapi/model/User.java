@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import fit.health.fithealthapi.model.enums.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,21 +36,45 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @ElementCollection(fetch = FetchType.EAGER, targetClass = DietaryPreference.class)
+    @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "user_dietary_preferences", joinColumns = @JoinColumn(name = "user_id"))
+    @CollectionTable(
+            name = "user_dietary_preferences",
+            joinColumns = @JoinColumn(
+                    name = "user_id",
+                    foreignKey = @ForeignKey(
+                            foreignKeyDefinition = "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+                    )
+            )
+    )
     @Column(name = "dietary_preference")
     private Set<DietaryPreference> dietaryPreferences = new HashSet<>();
 
-    @ElementCollection(fetch = FetchType.EAGER, targetClass = HealthCondition.class)
+    @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "user_health_conditions", joinColumns = @JoinColumn(name = "user_id"))
+    @CollectionTable(
+            name = "user_health_conditions",
+            joinColumns = @JoinColumn(
+                    name = "user_id",
+                    foreignKey = @ForeignKey(
+                            foreignKeyDefinition = "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+                    )
+            )
+    )
     @Column(name = "health_condition")
     private Set<HealthCondition> healthConditions = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER, targetClass = Allergen.class)
     @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "user_allergen", joinColumns = @JoinColumn(name = "user_id"))
+    @CollectionTable(
+            name = "user_allergen",
+            joinColumns = @JoinColumn(
+                    name = "user_id",
+                    foreignKey = @ForeignKey(
+                            foreignKeyDefinition = "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+                    )
+            )
+    )
     @Column(name = "allergens")
     private Set<Allergen> allergens = new HashSet<>();
 

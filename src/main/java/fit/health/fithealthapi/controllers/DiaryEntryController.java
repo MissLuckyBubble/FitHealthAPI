@@ -7,12 +7,14 @@ import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.services.DiaryEntryService;
 import fit.health.fithealthapi.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -70,6 +72,13 @@ public class DiaryEntryController {
         User user = getAuthenticatedUser();
 
         return ResponseEntity.ok(diaryEntryService.assignMealToDiary(dto, user));
+    }
+
+    @DeleteMapping("mealItem/{id}")
+    public ResponseEntity<?> removeMealItem(@PathVariable Long id){
+        User user = getAuthenticatedUser();
+        diaryEntryService.removeMealItem(id, user);
+        return ResponseEntity.ok("Meal Item successfully removed");
     }
 
     @PutMapping("{id}/meals/{recipeType}")

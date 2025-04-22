@@ -13,18 +13,41 @@ import java.util.List;
 @Getter
 @Setter
 public abstract class MealContainer extends NutritionalProfile implements MealAggregator {
-    @OneToOne
-    protected Meal breakfast;
+    @ManyToOne
+    @JoinColumn(
+            name = "breakfast_id",
+            foreignKey = @ForeignKey(
+                    foreignKeyDefinition = "FOREIGN KEY (breakfast_id) REFERENCES meals(id) ON DELETE SET NULL"
+            )
+    )
+    private Meal breakfast;
 
-    @OneToOne
-    protected Meal lunch;
+    @ManyToOne
+    @JoinColumn(
+            name = "lunch_id",
+            foreignKey = @ForeignKey(
+                    foreignKeyDefinition = "FOREIGN KEY (lunch_id) REFERENCES meals(id) ON DELETE SET NULL"
+            )
+    )
+    private Meal lunch;
 
-    @OneToOne
-    protected Meal dinner;
+    @ManyToOne
+    @JoinColumn(
+            name = "dinner_id",
+            foreignKey = @ForeignKey(
+                    foreignKeyDefinition = "FOREIGN KEY (dinner_id) REFERENCES meals(id) ON DELETE SET NULL"
+            )
+    )
+    private Meal dinner;
 
-    @OneToOne
-    protected Meal snack;
-
+    @ManyToOne
+    @JoinColumn(
+            name = "snack_id",
+            foreignKey = @ForeignKey(
+                    foreignKeyDefinition = "FOREIGN KEY (snack_id) REFERENCES meals(id) ON DELETE SET NULL"
+            )
+    )
+    private Meal snack;
     @Override
     public List<Meal> getMeals() {
         return Arrays.asList(breakfast, lunch, dinner, snack);

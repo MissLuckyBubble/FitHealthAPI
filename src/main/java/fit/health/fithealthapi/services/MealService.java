@@ -8,10 +8,7 @@ import fit.health.fithealthapi.model.dto.MealItemDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.model.enums.Visibility;
-import fit.health.fithealthapi.repository.FoodItemRepository;
-import fit.health.fithealthapi.repository.MealItemRepository;
-import fit.health.fithealthapi.repository.MealRepository;
-import fit.health.fithealthapi.repository.RecipeRepository;
+import fit.health.fithealthapi.repository.*;
 import fit.health.fithealthapi.utils.MealSearchUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +25,7 @@ public class MealService {
     private final RecipeRepository recipeRepository;
     private final FoodItemRepository foodItemRepository;
     private final VerificationPropagationService verificationPropagationService;
+    private final MealComponentRepository mealComponentRepository;
 
     @Transactional
     public Meal createMealFromDto(MealDto dto, User user) {
@@ -40,7 +38,7 @@ public class MealService {
         Set<MealItem> mealItems = dto.getMealItems().stream()
                 .map(itemDto -> buildMealItemFromDto(itemDto, meal, user))
                 .collect(Collectors.toSet());
-
+        meal.setVisibility(dto.getVisibility());
         meal.setMealItems(mealItems);
         meal.updateMealData();
 
@@ -105,64 +103,24 @@ public class MealService {
         return mealRepository.findById(id);
     }
 
-    public Meal processMealRequest(CreateMealRequestDto dto, User user) {
-        Meal meal;
-
-        // 1. Create or fetch existing Meal
-        if (dto.getMealId() != null) {
-            meal = mealRepository.findById(dto.getMealId())
-                    .orElseThrow(() -> new NotFoundException("Meal not found"));
-        } else {
-            meal = new Meal();
-            meal.setName(dto.getMealName() != null ? dto.getMealName() : "");
-            meal.setOwner(user);
-            if (dto.getRecipeType() != null) {
-                meal.getRecipeTypes().add(dto.getRecipeType());
-            }
-            meal.setMacronutrients(new Macronutrients());
-            mealRepository.save(meal);
-        }
-
-        // 2. Create MealItem
+    @Transactional
+    public void addMealItemToMeal(CreateMealRequestDto dto, Meal meal, User user) {
         MealItem mealItem = new MealItem();
         mealItem.setMeal(meal);
+        mealItem.setOwner(user);
 
-        if (dto.getComponentId() == null || dto.getComponentType() == null) {
-            throw new InvalidRequestException("componentId and componentType are required.");
-        }
-
-        // 3. Resolve Component
-        MealComponent component;
-        switch (dto.getComponentType().toUpperCase()) {
-            case "RECIPE" -> {
-                component = recipeRepository.findById(dto.getComponentId())
-                        .orElseThrow(() -> new RecipeNotFoundException("Recipe not found"));
-            }
-            case "FOOD_ITEM" -> {
-                component = foodItemRepository.findById(dto.getComponentId())
-                        .orElseThrow(() -> new IngredientNotFoundException("FoodItem not found"));
-            }
-            default -> throw new InvalidRequestException("Invalid componentType: must be RECIPE or FOOD_ITEM");
-        }
-
+        if(dto.getComponentId()!=null) {
+            MealComponent component = mealComponentRepository.findByIdWithItems(dto.getComponentId()).orElseThrow(() -> new NotFoundException("Component not found"));
         mealItem.setComponent(component);
-
-        // 4. Set quantity and unit
-        if (dto.getQuantity() == null || dto.getUnit() == null) {
-            throw new InvalidRequestException("Both quantity and unit are required.");
-        }
         mealItem.setQuantity(dto.getQuantity());
-        mealItem.setUnit(dto.getUnit());
+        mealItem.setUnit(dto.getUnit());}
 
-        // 5. Finalize and save
         mealItem.updateData();
         mealItemRepository.save(mealItem);
 
         meal.getMealItems().add(mealItem);
         meal.updateMealData();
         mealRepository.save(meal);
-
-        return meal;
     }
 
 
@@ -172,8 +130,10 @@ public class MealService {
             throw new ForbiddenException("You are not allowed to remove meal item");
         }
         Meal meal = mealItem.getMeal();
+        meal.getMealItems().remove(mealItem);
         mealItemRepository.deleteById(mealItemId);
         meal.updateMealData();
+        mealRepository.save(meal);
         return meal;
     }
 

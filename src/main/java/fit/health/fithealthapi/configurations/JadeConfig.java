@@ -2,6 +2,7 @@ package fit.health.fithealthapi.configurations;
 
 import fit.health.fithealthapi.agents.MealPlanAgent;
 import fit.health.fithealthapi.agents.MealScoringAgent;
+import fit.health.fithealthapi.services.MealComponentSearchService;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
 import jade.core.Profile;
@@ -16,11 +17,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class JadeConfig {
 
+    private final MealComponentSearchService mealComponentSearchService;
     private final RecipeService recipeService;
     private final UserService userService;
     private AgentContainer mainContainer;
 
-    public JadeConfig(RecipeService recipeService, UserService userService) {
+    public JadeConfig(RecipeService recipeService, UserService userService, MealComponentSearchService  mealComponentSearchService) {
+        this.mealComponentSearchService = mealComponentSearchService;
         this.recipeService = recipeService;
         this.userService = userService;
     }
@@ -44,7 +47,7 @@ public class JadeConfig {
         try {
             // Create an instance of MealPlanAgent with services
             MealPlanAgent agentInstance = new MealPlanAgent();
-            agentInstance.init(userService,recipeService);
+            agentInstance.init(userService,mealComponentSearchService);
             AgentController agent = mainContainer.acceptNewAgent("MealPlanAgent", agentInstance);
             agent.start();
         } catch (StaleProxyException e) {

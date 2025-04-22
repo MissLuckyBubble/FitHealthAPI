@@ -21,12 +21,14 @@ public class RecipeIngredient {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "recipe_id", nullable = false)
+    @JoinColumn(name = "recipe_id", nullable = false,
+            foreignKey = @ForeignKey(foreignKeyDefinition = "FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE"))
     @JsonIgnore
     private Recipe recipe;
 
     @ManyToOne
-    @JoinColumn(name = "food_item_id", nullable = false)
+    @JoinColumn(name = "food_item_id", nullable = false,
+            foreignKey = @ForeignKey(foreignKeyDefinition = "FOREIGN KEY (food_item_id) REFERENCES food_items(id) ON DELETE CASCADE"))
     private FoodItem foodItem;
 
     @Column(nullable = false)

@@ -71,6 +71,17 @@ public class Meal extends NutritionalProfile implements NutritionalSource, MealA
             }
         }
 
+        // Remove ALLERGEN_FREE if actual allergens exist
+        if (!this.allergens.isEmpty()) {
+            this.allergens.remove(Allergen.ALLERGEN_FREE);
+        }
+
+        // If after processing the set is still empty, explicitly mark as allergen-free
+        if (this.allergens.isEmpty()) {
+            this.allergens.add(Allergen.ALLERGEN_FREE);
+        }
+
+
         Set<HealthConditionSuitability> intersection = new HashSet<>();
         boolean first = true;
 
@@ -118,5 +129,9 @@ public class Meal extends NutritionalProfile implements NutritionalSource, MealA
     @Override
     public List<Meal> getMeals() {
         return List.of();
+    }
+
+    public void setMealItems(Set<MealItem> mealItems) {
+        this.mealItems = (mealItems != null) ? new HashSet<>(mealItems) : new HashSet<>();
     }
 }

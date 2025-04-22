@@ -6,7 +6,6 @@ import fit.health.fithealthapi.model.Macronutrients;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.RecipeIngredient;
 import fit.health.fithealthapi.model.dto.InferredPreferences;
-import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
 import fit.health.fithealthapi.model.enums.*;
 import fit.health.fithealthapi.repository.RecipeRepository;
 import fit.health.fithealthapi.repository.UserPreferenceRepository;
@@ -116,7 +115,7 @@ public class RecipeService {
         macronutrients.setFat(totalFat);
         macronutrients.setProtein(totalProtein);
         macronutrients.setSalt(totalSalt);
-        macronutrients.setSalt(totalSugar);
+        macronutrients.setSugar(totalSugar);
         recipe.setMacronutrients(macronutrients);
 
         recipe.setTotalWeight(totalWeight);
@@ -213,44 +212,6 @@ public class RecipeService {
                 Objects.equals(existingIngredient.getUnit(), updatedIngredient.getUnit());
     }
 
-    // ===================== Recipe Search Methods =====================
-
-    public List<Recipe> searchRecipes(RecipeSearchRequest searchRequest) {
-        List<Recipe> recipeList = recipeRepository.findAll();
-
-        return recipeList.stream()
-                .filter(recipe -> matchesDietaryPreferences(recipe, searchRequest.getDietaryPreferences()))
-                .filter(recipe -> excludesAllergens(recipe, searchRequest.getAllergens()))
-                .filter(recipe -> matchesHealthConditions(recipe, searchRequest.getConditionSuitability()))
-                .filter(recipe -> containsIngredients(recipe, searchRequest.getIngredientNames()))
-                .filter(recipe -> withinCalorieRange(recipe, searchRequest.getMinCalories(), searchRequest.getMaxCalories()))
-                .filter(recipe -> withinTime(recipe, searchRequest.getMaxTotalTime()))
-                .filter(recipe -> matchesName(recipe, searchRequest.getName()))
-                .filter(recipe -> matchesRecipeTypes(recipe, searchRequest.getRecipeTypes()))
-                .sorted(getRecipeComparator(searchRequest.getGoal()))
-                .collect(Collectors.toList());
-
-    }
-
-    private Comparator<Recipe> getRecipeComparator(Goal goal) {
-        Comparator<Recipe> calorieComparator;
-
-        if (goal == Goal.GAIN_SLOW || goal == Goal.GAIN_FAST) {
-            calorieComparator = Comparator.comparing(
-                    (Recipe recipe) -> recipe.getMacronutrients().getCalories(), // Explicitly declare type
-                    Comparator.nullsLast(Float::compare)
-            ).reversed();
-        } else {
-            calorieComparator = Comparator.comparing(
-                    (Recipe recipe) -> recipe.getMacronutrients().getCalories(),
-                    Comparator.nullsLast(Float::compare)
-            );
-        }
-
-        return calorieComparator
-                .thenComparing((r -> r.getPreparationTime() + r.getCookingTime()), Comparator.nullsLast(Integer::compare))
-                .thenComparing(recipe -> getFavoriteCount(recipe.getId()), Comparator.reverseOrder());
-    }
 
 
     public int getFavoriteCount(Long recipeId) {
@@ -281,55 +242,5 @@ public class RecipeService {
         typedQuery.setMaxResults(end - start + 1);
 
         return typedQuery.getResultList();
-    }
-
-
-    // ===================== Recipe Filter Helper Methods =====================
-
-    private boolean matchesDietaryPreferences(Recipe recipe, List<DietaryPreference> preferences) {
-        return preferences == null || recipe.getDietaryPreferences().containsAll(preferences);
-    }
-
-    private boolean matchesName(Recipe recipe, String name) {
-        return name == null || recipe.getName().contains(name);
-    }
-
-    private boolean excludesAllergens(Recipe recipe, List<Allergen> allergens) {
-        return allergens == null || Collections.disjoint(recipe.getAllergens(), allergens);
-    }
-
-    private boolean matchesHealthConditions(Recipe recipe, List<HealthConditionSuitability> conditions) {
-        return conditions == null || recipe.getHealthConditionSuitabilities().containsAll(conditions);
-    }
-
-    private boolean matchesRecipeTypes(Recipe recipe, List<RecipeType> recipeTypes) {
-        return recipeTypes == null || recipeTypes.isEmpty() || !Collections.disjoint(recipe.getRecipeTypes(), recipeTypes);
-    }
-
-    private boolean containsIngredients(Recipe recipe, List<String> ingredientNames) {
-        if (ingredientNames == null || ingredientNames.isEmpty()) return true;
-
-        Set<String> recipeIngredientNames = recipe.getIngredients().stream()
-                .map(ingredient -> ingredient.getFoodItem().getName().toLowerCase())
-                .collect(Collectors.toSet());
-
-        return ingredientNames.stream()
-                .map(String::toLowerCase)
-                .allMatch(recipeIngredientNames::contains);
-    }
-
-    private boolean withinCalorieRange(Recipe recipe, Float minCalories, Float maxCalories) {
-        boolean meetsMinCalories = minCalories == null || recipe.getMacronutrients().getCalories() >= minCalories;
-        boolean meetsMaxCalories = maxCalories == null || recipe.getMacronutrients().getCalories() <= maxCalories;
-
-        return meetsMinCalories && meetsMaxCalories;
-    }
-
-    private boolean withinTime(Recipe recipe, Float maxTotalTime) {
-        return maxTotalTime == null || (recipe.getPreparationTime() + recipe.getCookingTime()) <= maxTotalTime;
-    }
-
-    public Set<Recipe> getRecipesByIds(Set<Long> recipeIds) {
-        return new HashSet<>(recipeRepository.findByIdIn(recipeIds));
     }
 }

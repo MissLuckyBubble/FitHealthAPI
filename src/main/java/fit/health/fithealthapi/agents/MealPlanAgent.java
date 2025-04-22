@@ -1,14 +1,18 @@
 package fit.health.fithealthapi.agents;
 
+import fit.health.fithealthapi.model.MealComponent;
 import fit.health.fithealthapi.model.Recipe;
 import fit.health.fithealthapi.model.User;
-import fit.health.fithealthapi.model.dto.RecipeSearchRequest;
+import fit.health.fithealthapi.model.dto.MealComponentSearchRequest;
 import fit.health.fithealthapi.model.enums.RecipeType;
+import fit.health.fithealthapi.services.MealComponentSearchService;
 import fit.health.fithealthapi.services.RecipeService;
 import fit.health.fithealthapi.services.UserService;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,15 +20,15 @@ import java.util.stream.Collectors;
 public class MealPlanAgent extends Agent {
 
     private UserService userService;
-    private RecipeService recipeService;
+    private MealComponentSearchService mealComponentSearchService;
 
     public MealPlanAgent() {
-        // Default constructor for JADE
+        // Default constructor for JADE do not delete
     }
 
-    public void init(UserService userService, RecipeService recipeService) {
+    public void init(UserService userService, MealComponentSearchService mealComponentSearchService) {
         this.userService = userService;
-        this.recipeService = recipeService;
+        this.mealComponentSearchService = mealComponentSearchService;
     }
 
     @Override
@@ -67,13 +71,14 @@ public class MealPlanAgent extends Agent {
 
             User user = userService.getUserById(userId);
 
-            RecipeSearchRequest searchRequest = new RecipeSearchRequest();
+            MealComponentSearchRequest searchRequest = new MealComponentSearchRequest();
             searchRequest.setDietaryPreferences(user.getDietaryPreferences().stream().toList());
             searchRequest.setAllergens(user.getAllergens().stream().toList());
             searchRequest.setMaxCalories(user.getDailyCalorieGoal());
             searchRequest.setGoal(user.getGoal());
+            searchRequest.setOnlyRecipes(true);
 
-            List<Long> filteredRecipesIds = recipeService.searchRecipes(searchRequest).stream().map(Recipe::getId).toList();
+            List<Long> filteredRecipesIds = mealComponentSearchService.searchMealComponents(searchRequest).stream().map(MealComponent::getId).toList();
         }
 
         private String serializeMealPlan(List<Recipe> recipes) {

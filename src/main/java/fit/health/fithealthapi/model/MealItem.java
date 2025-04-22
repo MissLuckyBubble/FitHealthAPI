@@ -1,6 +1,7 @@
 package fit.health.fithealthapi.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
@@ -33,6 +34,7 @@ public class MealItem extends NutritionalProfile{
 
     @ManyToOne
     @JoinColumn(name = "component_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "owner"})
     private MealComponent component;
 
     @Column(nullable = false)
