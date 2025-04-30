@@ -1,5 +1,6 @@
 package fit.health.fithealthapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import fit.health.fithealthapi.model.enums.PreferenceType;
 import fit.health.fithealthapi.model.enums.UserItemType;
 import jakarta.persistence.*;
@@ -20,16 +21,26 @@ public class UserPreference {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JsonIgnore
     private User user;
 
     @Enumerated(EnumType.STRING)
     private PreferenceType preferenceType; // LIKE / DISLIKE
 
     @Enumerated(EnumType.STRING)
-    private UserItemType itemType; // RECIPE, MEAL, FOOD_ITEM
+    @Column(name = "item_type")
+    private UserItemType itemType;
+// RECIPE, MEAL, FOOD_ITEM, MEAL_PLAN
 
     private Long itemId;
 
-    private LocalDateTime timestamp = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime timestamp;
+
+    @PrePersist
+    protected void onCreate() {
+        this.timestamp = LocalDateTime.now();
+    }
+
 }

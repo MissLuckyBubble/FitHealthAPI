@@ -60,9 +60,9 @@ public class MealSearchUtils {
             }
         }
 
-        if (dto.getExcludeAllergens() != null && !dto.getExcludeAllergens().isEmpty()) {
+        if (dto.getAllergens() != null && !dto.getAllergens().isEmpty()) {
             if (meal instanceof NutritionalProfile profile) {
-                if (profile.getAllergens().stream().anyMatch(dto.getExcludeAllergens()::contains)) return false;
+                if (profile.getAllergens().stream().anyMatch(dto.getAllergens()::contains)) return false;
             }
         }
 

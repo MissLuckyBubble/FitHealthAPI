@@ -1,9 +1,12 @@
 package fit.health.fithealthapi.services;
 
+import fit.health.fithealthapi.exceptions.NotFoundException;
 import fit.health.fithealthapi.exceptions.UserNotFoundException;
-import fit.health.fithealthapi.model.User;
+import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.LoginUserDTO;
+import fit.health.fithealthapi.model.dto.scoring.ScoringUserDto;
 import fit.health.fithealthapi.model.enums.*;
+import fit.health.fithealthapi.repository.DiaryEntryRepository;
 import fit.health.fithealthapi.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -15,19 +18,24 @@ import jakarta.persistence.criteria.Root;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
     private final EntityManager entityManager;
+    private final UserPreferenceService userPreferenceService;
+    private final DiaryEntryRepository diaryEntryRepository;
+    private final MealPlanService mealPlanService;
 
-    public UserService(UserRepository userRepository, EntityManager entityManager) {
+    public UserService(UserRepository userRepository, EntityManager entityManager, UserPreferenceService userPreferenceService, DiaryEntryRepository diaryEntryRepository, MealPlanService mealPlanService) {
         this.userRepository = userRepository;
         this.entityManager = entityManager;
+        this.userPreferenceService = userPreferenceService;
+        this.diaryEntryRepository = diaryEntryRepository;
+        this.mealPlanService = mealPlanService;
     }
 
     public User saveUser(LoginUserDTO user) {
@@ -186,5 +194,54 @@ public class UserService {
         query.select(cb.count(user));
         return entityManager.createQuery(query).getSingleResult();
     }
+
+    public ScoringUserDto getScoringUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        ScoringUserDto dto = new ScoringUserDto();
+        dto.setId(user.getId());
+        dto.setDailyCalorieGoal(user.getDailyCalorieGoal());
+        dto.setGoal(user.getGoal());
+
+        List<Long> liked = userPreferenceService.getLikedItemsByType(user, UserItemType.MEAL)
+                .stream().map(UserPreference::getItemId).toList();
+
+        List<Long> disliked = userPreferenceService.getDislikedItemsByType(user, UserItemType.MEAL)
+                .stream().map(UserPreference::getItemId).toList();
+
+        dto.setLikedMealIds(liked);
+        dto.setDislikedMealIds(disliked);
+
+        LocalDate cutoff = LocalDate.now().minusDays(3);
+        List<DiaryEntry> recentEntries = diaryEntryRepository.findRecentEntriesByOwnerId(userId, cutoff);
+
+        dto.setId(user.getId());
+        dto.setGoal(user.getGoal());
+        dto.setDailyCalorieGoal(user.getDailyCalorieGoal());
+        dto.setAllergens(user.getAllergens());
+        dto.setHealthConditions(user.getHealthConditions());
+        dto.setDietaryPreferences(user.getDietaryPreferences());
+
+        Set<Long> usedMealIds = recentEntries.stream()
+                .flatMap(entry -> entry.getMeals().stream())
+                .filter(Objects::nonNull)
+                .map(Meal::getId)
+                .collect(Collectors.toSet());
+
+        usedMealIds.addAll(
+                mealPlanService.getAllByUser(user).stream()
+                        .flatMap(plan -> plan.getMeals().stream())
+                        .filter(Objects::nonNull)
+                        .map(Meal::getId)
+                        .collect(Collectors.toSet())
+        );
+
+
+        dto.setUsedMealIds(usedMealIds);
+
+        return dto;
+    }
+
 }
 

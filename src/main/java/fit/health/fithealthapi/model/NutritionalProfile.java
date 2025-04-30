@@ -24,7 +24,7 @@ public abstract class NutritionalProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "macronutrients_id", nullable = false)
     protected Macronutrients macronutrients;
 

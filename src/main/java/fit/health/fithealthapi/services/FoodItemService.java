@@ -38,12 +38,6 @@ public class FoodItemService {
         inferPreferences(foodItem);
         return foodItemRepository.save(foodItem);
     }
-
-    @Transactional(readOnly = true)
-    public FoodItem getById(Long id) {
-        return foodItemRepository.findById(id)
-                .orElseThrow(() -> new IngredientNotFoundException("Food item not found with ID: " + id));
-    }
     /**
      * Update an existing FoodItem in both the ontology and the database.
      * @param id The ID of the FoodItem to update.
@@ -66,8 +60,13 @@ public class FoodItemService {
 
         existingFoodItem.setName(updatedFoodItem.getName());
         existingFoodItem.setVerifiedByAdmin(updatedFoodItem.isVerifiedByAdmin());
-        verificationPropagationService.onFoodItemUpdated(updatedFoodItem);
-        return foodItemRepository.save(existingFoodItem);
+        foodItemRepository.save(existingFoodItem);
+        try{
+        verificationPropagationService.onFoodItemUpdated(existingFoodItem);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        return existingFoodItem;
     }
 
     private void updateFoodFields(FoodItem updatedFoodItem, FoodItem existingFoodItem) {
@@ -99,11 +98,6 @@ public class FoodItemService {
                 Objects.equals(updatedFoodItem.getAllergens(), existingFoodItem.getAllergens());
     }
 
-
-    public List<FoodItem> getAllFoodItems() {
-        return foodItemRepository.findAll();
-    }
-
     public FoodItem findById(long id) {
         return foodItemRepository.findById(id).orElseThrow(EntityNotFoundException::new);
     }
@@ -128,18 +122,6 @@ public class FoodItemService {
         return filterFoodItemsByPreferences(foodItemRepository.findAll(), preferences);
     }
 
-    public List<FoodItem> findFoodItemsWithoutAllergens(List<Allergen> allergens) {
-        return filterFoodItemsWithoutAllergens(foodItemRepository.findAll(), allergens);
-    }
-
-    public List<FoodItem> findFoodItemsByHealthConditions(List<HealthConditionSuitability> preferences) {
-        return filterFoodItemsByHealthConditions(foodItemRepository.findAll(), preferences);
-    }
-
-    public Optional<FoodItem> findByName(String name) {
-        return foodItemRepository.findByName(name);
-    }
-
     public List<FoodItem> getAllWithFilters(Map<String, ? extends Object> filters, String sortField, String sortOrder, int start, int end) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<FoodItem> query = cb.createQuery(FoodItem.class);
@@ -161,22 +143,7 @@ public class FoodItemService {
         return typedQuery.getResultList();
     }
 
-    public long getTotalCount(Map<String, Object> filters) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> query = cb.createQuery(Long.class);
-        Root<FoodItem> foodItem = query.from(FoodItem.class);
-
-        Predicate predicate = buildFoodItemPredicate(cb, foodItem, filters);
-        query.where(predicate);
-        query.select(cb.count(foodItem));
-
-        return entityManager.createQuery(query).getSingleResult();
-    }
-
-
-
     // ===================== Helper Methods =====================
-
     private Predicate buildFoodItemPredicate(CriteriaBuilder cb, Root<FoodItem> foodItem, Map<String, Object> filters) {
         Predicate predicate = cb.conjunction();
 

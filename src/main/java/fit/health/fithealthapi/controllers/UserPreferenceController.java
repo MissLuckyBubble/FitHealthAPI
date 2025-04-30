@@ -2,6 +2,7 @@ package fit.health.fithealthapi.controllers;
 
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.UserPreference;
+import fit.health.fithealthapi.model.enums.PreferenceType;
 import fit.health.fithealthapi.model.enums.UserItemType;
 import fit.health.fithealthapi.services.UserPreferenceService;
 import fit.health.fithealthapi.services.UserService;
@@ -11,9 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/preferences")
+@RequestMapping("/preferences")
 @RequiredArgsConstructor
 public class UserPreferenceController {
 
@@ -56,4 +58,31 @@ public class UserPreferenceController {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userService.getUserByUsername(username);
     }
+
+    @PostMapping("/toggle")
+    public ResponseEntity<?> toggle(
+            @RequestParam UserItemType type,
+            @RequestParam Long itemId,
+            @RequestParam PreferenceType preferenceType
+    ) {
+        User user = getAuthenticatedUser();
+        UserPreference result = preferenceService.togglePreference(user, type, itemId, preferenceType);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Boolean>> getStatus(
+            @RequestParam UserItemType type,
+            @RequestParam Long itemId
+    ) {
+        User user = getAuthenticatedUser();
+        Map<String, Boolean> status = preferenceService.getPreferenceStatus(user, type, itemId);
+        return ResponseEntity.ok(status);
+    }
+
+    @GetMapping("/counts")
+    public ResponseEntity<?> getCounts(@RequestParam UserItemType type, @RequestParam Long itemId) {
+        return ResponseEntity.ok(preferenceService.getPreferenceCounts(type, itemId));
+    }
+
 }

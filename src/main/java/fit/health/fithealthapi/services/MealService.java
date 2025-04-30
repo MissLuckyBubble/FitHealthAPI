@@ -6,6 +6,8 @@ import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealDto;
 import fit.health.fithealthapi.model.dto.MealItemDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.model.dto.scoring.ScoringMealDto;
+import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.model.enums.Visibility;
 import fit.health.fithealthapi.repository.*;
@@ -66,10 +68,6 @@ public class MealService {
 
     public List<Meal> getUserMeals(User user) {
         return mealRepository.findByOwner(user);
-    }
-
-    public List<Meal> getPublicMeals() {
-        return mealRepository.findByVisibility(Visibility.PUBLIC);
     }
 
     @Transactional
@@ -140,6 +138,28 @@ public class MealService {
     public List<Meal> searchMeals(MealSearchDto dto) {
         List<Meal> all = mealRepository.findAll();
         return MealSearchUtils.filterMeals(all, dto);
+    }
+
+    public List<ScoringMealDto> searchScoringMealDto(MealSearchDto dto) {
+        return toScoringDto(searchMeals(dto));
+    }
+
+    public List<ScoringMealDto> toScoringDto(List<Meal> meals) {
+        return meals.stream().map(meal -> {
+            ScoringMealDto dto = new ScoringMealDto();
+            dto.setId(meal.getId());
+            dto.setVerifiedByAdmin(meal.isVerifiedByAdmin());
+            dto.setMacronutrients(meal.getMacronutrients());
+            dto.setDietaryPreferences(meal.getDietaryPreferences());
+
+            List<RecipeType> types = meal.getRecipeTypes().stream().toList();
+            dto.setRecipeTypes(types);
+
+            List<Long> componentIds = meal.getMealItems().stream()
+                    .map(mealItem -> mealItem.getComponent().getId()).toList();
+            dto.setComponentIds(componentIds);
+            return dto;
+        }).toList();
     }
 
 }

@@ -20,7 +20,7 @@ public class MealSearchDto {
     private Boolean verifiedOnly;
     private Set<DietaryPreference> dietaryPreferences;
     private Set<HealthConditionSuitability> healthConditions;
-    private Set<Allergen> excludeAllergens;
+    private Set<Allergen> allergens;
     private Float minCalories;
     private Float maxCalories;
     private Float minProtein;

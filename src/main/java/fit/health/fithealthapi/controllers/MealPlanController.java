@@ -1,16 +1,22 @@
 package fit.health.fithealthapi.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fit.health.fithealthapi.model.Meal;
+import fit.health.fithealthapi.agents.UserAgent;
+import fit.health.fithealthapi.mappers.MealPlanMapper;
 import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
+import fit.health.fithealthapi.model.dto.MealPlanRequestDTO;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.model.dto.mealplan.MealPlanSummaryDTO;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Role;
 import fit.health.fithealthapi.services.DiaryEntryService;
 import fit.health.fithealthapi.services.MealPlanService;
 import fit.health.fithealthapi.services.UserService;
+import jade.wrapper.AgentContainer;
+import jade.wrapper.AgentController;
+import jade.wrapper.StaleProxyException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/meal-plans")
@@ -29,6 +33,7 @@ public class MealPlanController {
     private final MealPlanService mealPlanService;
     private final UserService userService;
     private final DiaryEntryService diaryEntryService;
+    private final AgentContainer agentContainer;
 
     private User getAuthenticatedUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -45,16 +50,20 @@ public class MealPlanController {
     }
 
     @GetMapping
-    public ResponseEntity<List<MealPlan>> getOwnerMealPlans() {
+    public ResponseEntity<List<MealPlanSummaryDTO>> getOwnerMealPlans() {
         User user = getAuthenticatedUser();
-        return ResponseEntity.ok(mealPlanService.getOwnerMealPlans(user));
+        return ResponseEntity.ok(mealPlanService.getOwnerMealPlans(user).stream().map(MealPlanMapper::toSummaryDTO).toList());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getMealPlan(@PathVariable Long id) {
-        return mealPlanService.getMealPlanById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
+        Optional<MealPlan> optionalMealPlan = mealPlanService.getMealPlanById(id);
+        if (optionalMealPlan.isPresent()) {
+            return ResponseEntity.ok(MealPlanMapper.toDetailsDTO(optionalMealPlan.get()));
+        }
+        else{
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No such meal plan");
+        }
     }
 
     @PutMapping("/{id}")
@@ -102,7 +111,7 @@ public class MealPlanController {
 
     @PostMapping("/search")
     public ResponseEntity<?> searchMealPlans(@RequestBody MealSearchDto searchDto) {
-        return ResponseEntity.ok(mealPlanService.searchMealPlan(searchDto));
+        return ResponseEntity.ok(mealPlanService.searchMealPlan(searchDto).stream().map(MealPlanMapper::toSummaryDTO));
     }
 
 
@@ -122,10 +131,23 @@ public class MealPlanController {
             mapper.writeValueAsString(mealPlan); // 🔥 will throw if problem
             return ResponseEntity.ok(mealPlan);
         } catch (Exception e) {
-            e.printStackTrace(); // look here to see what breaks
+            e.printStackTrace();
             return ResponseEntity.status(500).body("Manual serialization failed: " + e.getMessage());
         }
     }
 
+    @PostMapping("/generate")
+    public ResponseEntity<?> generateMealPlan(@RequestBody MealPlanRequestDTO request) {
+        User user = getAuthenticatedUser(); // Your existing auth logic
+            try {
+                UserAgent userAgent = new UserAgent();
+                userAgent.init(mealPlanService,user,request.getRecipeTypes(),request.getDays());
+                AgentController userAgentController = agentContainer.acceptNewAgent("userAgent" + user.getUsername() + UUID.randomUUID(), userAgent);
+                userAgentController.start();
 
+                return ResponseEntity.ok("Meal plan request sent to JADE agents.");
+            } catch (StaleProxyException e) {
+                return ResponseEntity.status(500).body("Failed to start agents");
+            }
+    }
 }

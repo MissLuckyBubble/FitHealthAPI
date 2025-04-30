@@ -25,4 +25,9 @@ public interface DiaryEntryRepository extends JpaRepository<DiaryEntry, Long> {
        OR d.snack = :meal
 """)
     List<DiaryEntry> findByAnyMeal(@Param("meal") Meal meal);
+
+    @Query("SELECT d FROM DiaryEntry d WHERE d.date >= :cutoffDate AND d.visibility = 'PRIVATE' AND d.owner.id = :ownerId")
+    List<DiaryEntry> findRecentEntriesByOwnerId(@Param("ownerId") Long ownerId,
+                                               @Param("cutoffDate") LocalDate cutoffDate);
+
 }

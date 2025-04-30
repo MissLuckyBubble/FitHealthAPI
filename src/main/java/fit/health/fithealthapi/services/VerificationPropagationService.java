@@ -4,12 +4,14 @@ import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class VerificationPropagationService {
 
     private final RecipeRepository recipeRepository;
@@ -17,14 +19,11 @@ public class VerificationPropagationService {
     private final MealRepository mealRepository;
     private final MealPlanRepository mealPlanRepository;
 
-    private final MealPlanService mealPlanService;
-
     public void onFoodItemUpdated(FoodItem foodItem) {
         List<Recipe> recipes = recipeRepository.findAllByIngredient(foodItem);
         for (Recipe recipe : recipes) {
             recipe.checkAndUpdateVerification();
             recipeRepository.save(recipe);
-            recipeRepository.flush();
             onRecipeUpdated(recipe);
         }
 
@@ -40,7 +39,6 @@ public class VerificationPropagationService {
         for (MealItem item : mealItems) {
             item.updateData();
             mealItemRepository.save(item);
-            mealItemRepository.flush();
             onMealItemUpdated(item);
         }
     }
@@ -50,7 +48,6 @@ public class VerificationPropagationService {
         if (meal != null) {
             meal.updateMealData();
             mealRepository.save(meal);
-            mealRepository.flush();
             onMealUpdated(meal);
         }
     }
@@ -60,7 +57,6 @@ public class VerificationPropagationService {
         for (MealPlan plan : plans) {
             updateVerificationStatus(plan);
             mealPlanRepository.save(plan);
-            mealPlanRepository.flush();
         }
     }
 

@@ -69,4 +69,10 @@ public class MealComponentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
+
+    @Transactional
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id, Authentication authentication) {
+        return  ResponseEntity.ok(mealComponentRepository.findByIdWithItems(id));
+    }
 }

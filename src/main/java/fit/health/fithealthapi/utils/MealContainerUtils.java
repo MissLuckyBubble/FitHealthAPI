@@ -6,11 +6,9 @@ import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.repository.MealItemRepository;
-import fit.health.fithealthapi.repository.MealRepository;
 import jakarta.persistence.EntityManager;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -84,6 +82,15 @@ public class MealContainerUtils {
 
         for (Meal meal : container.getMeals()) {
             if (meal != null && meal.getMacronutrients() != null) {
+                Macronutrients realMacros = meal.getMacronutrients();
+                Macronutrients fixedMacros = new Macronutrients();
+                fixedMacros.setCalories(realMacros.getCalories());
+                fixedMacros.setProtein(realMacros.getProtein());
+                fixedMacros.setFat(realMacros.getFat());
+                fixedMacros.setSugar(realMacros.getSugar());
+                fixedMacros.setSalt(realMacros.getSalt());
+                meal.setMacronutrients(fixedMacros);
+
                 macronutrients.add(meal.getMacronutrients());
             }
         }

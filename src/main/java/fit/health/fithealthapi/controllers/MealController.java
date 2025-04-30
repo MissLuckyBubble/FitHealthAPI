@@ -1,6 +1,5 @@
 package fit.health.fithealthapi.controllers;
 
-import fit.health.fithealthapi.exceptions.NotFoundException;
 import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.MealDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
@@ -16,8 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/meals")
@@ -25,9 +22,6 @@ import java.util.stream.Collectors;
 public class MealController {
     private final MealService mealService;
     private final UserService userService;
-    private final RecipeRepository recipeRepository;
-    private final FoodItemRepository foodItemRepository;
-    private final MealRepository mealRepository;
 
     private User getAuthenticatedUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -58,6 +52,7 @@ public class MealController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMeal(@PathVariable Long id, @RequestBody MealDto dto) {
+
         User user = getAuthenticatedUser();
         return mealService.getMealById(id)
                 .map(existingMeal -> {

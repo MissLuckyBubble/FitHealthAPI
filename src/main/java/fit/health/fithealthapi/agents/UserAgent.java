@@ -1,12 +1,14 @@
 package fit.health.fithealthapi.agents;
 
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.services.MealPlanService;
 import jade.core.Agent;
-import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 
 import java.text.SimpleDateFormat;
@@ -15,13 +17,14 @@ import java.util.stream.Collectors;
 
 public class UserAgent extends Agent {
 
-    private MealPlanService mealPlanService;
-    private User user;
-    Set<RecipeType> recipeTypes;
+    private transient MealPlanService mealPlanService;
+    private transient User user;
+    private Set<RecipeType> recipeTypes;
     private int days;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public UserAgent() {
-        // Default constructor for JADE
+    public UserAgent(){
+        //do not delete it's needed for JADE
     }
 
     public void init(MealPlanService mealPlanService, User user, Set<RecipeType> recipeTypes, int days) {
@@ -34,61 +37,75 @@ public class UserAgent extends Agent {
     @Override
     protected void setup() {
         System.out.println(getLocalName() + " started.");
-        addBehaviour(new RequestMealPlanBehaviour());
-        addBehaviour(new ReceiveMealPlanBehaviour(days));
+        addBehaviour(new RequestMealPlansBehaviour());
+        addBehaviour(new ReceiveMealPlansBehaviour());
     }
 
-    private class RequestMealPlanBehaviour extends OneShotBehaviour {
+    private class RequestMealPlansBehaviour extends OneShotBehaviour {
         @Override
         public void action() {
-            ACLMessage request = new ACLMessage(ACLMessage.REQUEST);
-            request.addReceiver(getAID("MealPlanAgent"));
-            request.setContent(user.getId()+";"+recipeTypes.toString()+";"+days);
-            myAgent.send(request);
-            System.out.println("UserAgent(" +getLocalName()+"): Sent request to Meal Recommendation Agent.");
+            try {
+                Map<String, Object> requestMap = new HashMap<>();
+                requestMap.put("userId", user.getId());
+                requestMap.put("recipeTypes", recipeTypes.stream().map(Enum::name).collect(Collectors.toList()));
+                requestMap.put("days", days);
+
+                String jsonRequest = objectMapper.writeValueAsString(requestMap);
+
+                ACLMessage request = new ACLMessage(ACLMessage.REQUEST);
+                request.addReceiver(getAID("MealPlanAgent"));
+                request.setContent(jsonRequest);
+                myAgent.send(request);
+                System.out.println("UserAgent (" + getLocalName() + ") sent meal plan generation request.");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private class ReceiveMealPlanBehaviour extends CyclicBehaviour {
-        private int remainingDays;
-        public ReceiveMealPlanBehaviour(int days) {
-            this.remainingDays = days;
-        }
+    private class ReceiveMealPlansBehaviour extends CyclicBehaviour {
         @Override
         public void action() {
             ACLMessage msg = myAgent.receive();
             if (msg != null && msg.getPerformative() == ACLMessage.INFORM) {
-                String mealPlanContent = msg.getContent();
-                System.out.println("User Agent received meal plan: " + mealPlanContent);
+                try {
+                    String content = msg.getContent();
 
-                Set<Long> mealPlan = convertContentToMealPlan(mealPlanContent);
-                if(mealPlan != null){
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy");
-                    String formattedDate = dateFormat.format(new Date());
-                    String mealPlanName = user.getUsername() + "_AIGenerated_" + formattedDate + "_" + (remainingDays) + "_days";
-                    //mealPlanService.createMealPlan(mealPlanName, user, mealPlan);
-                    remainingDays--;
-                }
+                    List<Map<String, Long>> dailyMealTypeIds = objectMapper.readValue(
+                            content,
+                            new TypeReference<>() {}
+                    );
 
-                if(remainingDays<=0){
+                    int dayIndex = 1;
+                    for (Map<String, Long> mealIds : dailyMealTypeIds) {
+                        Map<RecipeType, Long> idsByType = new HashMap<>();
+                        for (Map.Entry<String, Long> entry : mealIds.entrySet()) {
+                            idsByType.put(RecipeType.valueOf(entry.getKey()), entry.getValue());
+                        }
+
+                        String name = String.format("%s_AIPlan_%s_Day%d",
+                                user.getUsername(),
+                                new SimpleDateFormat("yyyyMMdd").format(new Date()),
+                                dayIndex++
+                        );
+
+                        MealPlan plan = mealPlanService.createFromMealIds(user, name, idsByType);
+                        System.out.println("Saved meal plan: " + plan.getName());
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
                     myAgent.doDelete();
                 }
-
             } else {
                 block();
             }
-        }
-
-        public Set<Long> convertContentToMealPlan(String content) {
-             Set<Long> recipeIds = Arrays.stream(content.split(","))
-                    .map(Long::parseLong)
-                    .collect(Collectors.toSet());
-             return  recipeIds;
         }
     }
 
     @Override
     protected void takeDown() {
-        System.out.println("User Agent " + getLocalName() + " terminated.");
+        System.out.println("UserAgent " + getLocalName() + " terminated.");
     }
 }
