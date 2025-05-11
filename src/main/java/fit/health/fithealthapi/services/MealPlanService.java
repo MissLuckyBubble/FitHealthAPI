@@ -9,6 +9,8 @@ import fit.health.fithealthapi.model.MealPlan;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.model.dto.mealplan.MealPlanFlatData;
+import fit.health.fithealthapi.model.dto.mealplan.MealPlanSearchRow;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Visibility;
 import fit.health.fithealthapi.repository.MealPlanRepository;
@@ -20,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -101,9 +102,29 @@ public class MealPlanService {
         return mealPlanRepository.save(mealPlan);
     }
 
-    public List<MealPlan> searchMealPlan(MealSearchDto dto) {
-        List<MealPlan> all = mealPlanRepository.findAll();
-        return MealSearchUtils.filterMeals(all, dto);
+    public List<MealPlanFlatData> searchMealPlan(MealSearchDto dto) {
+        List<MealPlanFlatData> all = mapToDto(mealPlanRepository.findAllMealPlanRows());
+        return MealSearchUtils.filterMeals(all,dto);
+    }
+
+    private List<MealPlanFlatData> mapToDto(List<Object[]> rawRows) {
+        return rawRows.stream().map(row -> new MealPlanFlatData(new MealPlanSearchRow(
+                (Long) row[0],
+                (String) row[1],
+                (Boolean) row[2],
+                (String) row[3],
+                (Long) row[4],
+                (Float) row[5],
+                (Float) row[6],
+                (Float) row[7],
+                (Float) row[8],
+                (Float) row[9],
+                (Long) row[10],
+                (String) row[11],
+                row[12] != null ? row[12].toString() : null,
+                row[13] != null ? row[13].toString() : null,
+                row[14] != null ? row[14].toString() : null
+        ))).toList();
     }
 
     public MealPlan createFromMealIds(User user, String name, Map<RecipeType, Long> idsByType) {

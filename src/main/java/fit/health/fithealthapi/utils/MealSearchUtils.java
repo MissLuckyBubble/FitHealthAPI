@@ -49,25 +49,20 @@ public class MealSearchUtils {
 
     private static boolean filterByPreferences(MealAggregator meal, MealSearchDto dto) {
         if (dto.getDietaryPreferences() != null && !dto.getDietaryPreferences().isEmpty()) {
-            if (meal instanceof NutritionalProfile profile) {
-                if (!profile.getDietaryPreferences().containsAll(dto.getDietaryPreferences())) return false;
-            }
+            if (!meal.getDietaryPreferences().containsAll(dto.getDietaryPreferences())) return false;
         }
 
         if (dto.getHealthConditions() != null && !dto.getHealthConditions().isEmpty()) {
-            if (meal instanceof NutritionalProfile profile) {
-                if (!profile.getHealthConditionSuitabilities().containsAll(dto.getHealthConditions())) return false;
-            }
+            if (!meal.getHealthConditionSuitabilities().containsAll(dto.getHealthConditions())) return false;
         }
 
         if (dto.getAllergens() != null && !dto.getAllergens().isEmpty()) {
-            if (meal instanceof NutritionalProfile profile) {
-                if (profile.getAllergens().stream().anyMatch(dto.getAllergens()::contains)) return false;
-            }
+            if (meal.getAllergens().stream().anyMatch(dto.getAllergens()::contains)) return false;
         }
 
         return true;
     }
+
 
     private static boolean filterByNutrients(MealAggregator meal, MealSearchDto dto) {
         Macronutrients macros = meal.getMacronutrients();
@@ -100,7 +95,7 @@ public class MealSearchUtils {
                         }).count();
             });
         } else if ("date".equalsIgnoreCase(dto.getSortBy())) {
-            comparator = Comparator.comparing(m -> ((NutritionalProfile) m).getId());
+            comparator = Comparator.comparing(m -> m.getId());
         }
 
         if ("desc".equalsIgnoreCase(dto.getSortDirection())) {
@@ -112,10 +107,7 @@ public class MealSearchUtils {
 
     private static boolean filterByVerifiedOnly(MealAggregator meal, Boolean verifiedOnly) {
         if (verifiedOnly == null || !verifiedOnly) return true;
-        if (meal instanceof NutritionalProfile profile) {
-            return profile.isVerifiedByAdmin();
-        }
-        return true;
+        return meal.isVerifiedByAdmin();
     }
 
 }

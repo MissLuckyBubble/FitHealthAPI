@@ -32,7 +32,7 @@ public enum Allergen {
     @JsonCreator  // For converting back from string to enum
     public static Allergen fromString(String value) {
         for (Allergen allergen : Allergen.values()) {
-            if (allergen.getDisplayName().equalsIgnoreCase(value)) {
+            if (allergen.getDisplayName().equalsIgnoreCase(value) || allergen.name().equalsIgnoreCase(value)) {
                 return allergen;
             }
         }

@@ -17,4 +17,14 @@ public interface MealComponentRepository extends JpaRepository<MealComponent, Lo
     @Query("SELECT mc FROM MealComponent mc LEFT JOIN FETCH mc.mealItems WHERE mc.id = :id")
     Optional<MealComponent> findByIdWithItems(@Param("id") Long id);
 
+
+    @Query("""
+        SELECT mc FROM MealComponent mc
+        LEFT JOIN FETCH mc.macronutrients
+        LEFT JOIN FETCH mc.dietaryPreferences
+        LEFT JOIN FETCH mc.allergens
+        LEFT JOIN FETCH mc.healthConditionSuitabilities
+        WHERE mc.id = :id
+    """)
+    Optional<MealComponent> findByIdFullyLoaded(@Param("id") Long id);
 }

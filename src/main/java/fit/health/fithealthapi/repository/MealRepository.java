@@ -3,6 +3,7 @@ package fit.health.fithealthapi.repository;
 import fit.health.fithealthapi.model.Meal;
 import fit.health.fithealthapi.model.User;
 import fit.health.fithealthapi.model.enums.Visibility;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,6 +37,4 @@ public interface MealRepository extends JpaRepository<Meal, Long> {
             nativeQuery = true
     )
     List<Meal> fetchWithAllDependencies(@Param("ids") List<Long> ids);
-
-
 }

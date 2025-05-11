@@ -1,11 +1,10 @@
 package fit.health.fithealthapi.controllers;
 
+import fit.health.fithealthapi.mappers.MealMapper;
 import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.MealDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
-import fit.health.fithealthapi.repository.FoodItemRepository;
-import fit.health.fithealthapi.repository.MealRepository;
-import fit.health.fithealthapi.repository.RecipeRepository;
+import fit.health.fithealthapi.model.dto.meal.MealSummaryDTO;
 import fit.health.fithealthapi.services.MealService;
 import fit.health.fithealthapi.services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/meals")
@@ -45,22 +45,24 @@ public class MealController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getMeal(@PathVariable Long id) {
-        return mealService.getMealById(id)
+        MealSummaryDTO dto = mealService.getMealById(id);
+        if(dto != null) return ResponseEntity.ok(dto);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+    }
+
+    @GetMapping("/meal-items/{id}")
+    public ResponseEntity<?> getMealItem(@PathVariable Long id) {
+        return mealService.getMealItemById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMeal(@PathVariable Long id, @RequestBody MealDto dto) {
-
         User user = getAuthenticatedUser();
-        return mealService.getMealById(id)
-                .map(existingMeal -> {
-                    if (!existingMeal.getOwner().equals(user))
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
-                    return ResponseEntity.ok(mealService.updateMealFromDto(dto,id,user));
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found"));
+        ResponseEntity<String> responseEntity = getStringResponseEntity(id);
+        if (responseEntity != null) return responseEntity;
+        return ResponseEntity.ok(mealService.updateMealFromDto(dto,id,user));
     }
 
     @PutMapping("{id}/meal-item")
@@ -71,21 +73,28 @@ public class MealController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMeal(@PathVariable Long id) {
-        User user = getAuthenticatedUser();
-        return mealService.getMealById(id)
-                .map(meal -> {
-                    if (!meal.getOwner().equals(user))
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
-
-                    mealService.deleteMeal(id);
-                    return ResponseEntity.ok("Meal deleted successfully");
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found"));
+        ResponseEntity<String> responseEntity = getStringResponseEntity(id);
+        if (responseEntity != null) return responseEntity;
+        mealService.deleteMeal(id);
+        return ResponseEntity.ok("Meal deleted successfully");
     }
 
+    private ResponseEntity<String> getStringResponseEntity(Long id) {
+        User user = getAuthenticatedUser();
+        MealSummaryDTO existingMeal = mealService.getMealById(id);
+        if (existingMeal == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meal not found");
+        }
+        if (!Objects.equals(existingMeal.getOwner().getId(), user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized");
+        }
+        return null;
+    }
+
+
     @PostMapping("/search")
-    public ResponseEntity<List<Meal>> searchMeals(@RequestBody MealSearchDto searchDto) {
-        return ResponseEntity.ok(mealService.searchMeals(searchDto));
+    public ResponseEntity<List<MealSummaryDTO>> searchMeals(@RequestBody MealSearchDto searchDto) {
+        return ResponseEntity.ok(mealService.searchMeals(searchDto).stream().map(MealMapper::toMealSummaryDto).toList());
     }
 
     @DeleteMapping("/meal-item/{id}")

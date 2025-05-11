@@ -1,11 +1,13 @@
 package fit.health.fithealthapi.services;
 
 import fit.health.fithealthapi.exceptions.*;
+import fit.health.fithealthapi.mappers.MealMapper;
 import fit.health.fithealthapi.model.*;
 import fit.health.fithealthapi.model.dto.CreateMealRequestDto;
 import fit.health.fithealthapi.model.dto.MealDto;
 import fit.health.fithealthapi.model.dto.MealItemDto;
 import fit.health.fithealthapi.model.dto.MealSearchDto;
+import fit.health.fithealthapi.model.dto.meal.MealSummaryDTO;
 import fit.health.fithealthapi.model.dto.scoring.ScoringMealDto;
 import fit.health.fithealthapi.model.enums.RecipeType;
 import fit.health.fithealthapi.model.enums.Role;
@@ -72,7 +74,7 @@ public class MealService {
 
     @Transactional
     public Meal updateMealFromDto(MealDto dto, long id, User user) {
-        Meal existingMeal = mealRepository.findById(id)
+        Meal existingMeal = mealRepository.findByIdFullyLoaded(id)
                 .orElseThrow(() -> new NotFoundException("Meal not found"));
 
         existingMeal.setName(dto.getName());
@@ -97,8 +99,13 @@ public class MealService {
         mealRepository.deleteById(id);
     }
 
-    public Optional<Meal> getMealById(Long id) {
-        return mealRepository.findById(id);
+    public MealSummaryDTO getMealById(Long id) {
+        Optional<Meal> meal = mealRepository.findByIdFullyLoaded(id);
+        return meal.map(MealMapper::toMealSummaryDto).orElse(null);
+    }
+
+    public Optional<MealItem> getMealItemById(Long id) {
+        return mealItemRepository.findById(id);
     }
 
     @Transactional

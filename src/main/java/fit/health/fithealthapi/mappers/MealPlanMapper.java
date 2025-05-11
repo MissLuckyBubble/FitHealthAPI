@@ -1,16 +1,17 @@
 package fit.health.fithealthapi.mappers;
 
 import fit.health.fithealthapi.model.Macronutrients;
-import fit.health.fithealthapi.model.Meal;
 import fit.health.fithealthapi.model.MealPlan;
-import fit.health.fithealthapi.model.User;
+import fit.health.fithealthapi.model.dto.mealplan.MealPlanFlatData;
 import fit.health.fithealthapi.model.dto.mealplan.MealPlanSummaryDTO;
 import fit.health.fithealthapi.model.dto.mealplan.MealPlanDetailsDTO;
-import fit.health.fithealthapi.model.dto.meal.MealShortDTO;
 import fit.health.fithealthapi.model.dto.user.SimpleUserDTO;
 import fit.health.fithealthapi.model.enums.Allergen;
 import fit.health.fithealthapi.model.enums.DietaryPreference;
 import fit.health.fithealthapi.model.enums.HealthConditionSuitability;
+
+import static fit.health.fithealthapi.mappers.MealMapper.toMealShortDTO;
+import static fit.health.fithealthapi.mappers.UserMapper.toSimpleUserDTO;
 
 public class MealPlanMapper {
 
@@ -22,21 +23,38 @@ public class MealPlanMapper {
         return dto;
     }
 
+    public static MealPlanSummaryDTO toSummaryDTO(MealPlanFlatData mealPlan) {
+        if (mealPlan == null) return null;
+
+        MealPlanSummaryDTO dto = new MealPlanSummaryDTO(
+                mealPlan.getId(),
+                mealPlan.getName(),
+                copyMacros(mealPlan.getMacronutrients()),
+                mealPlan.getDietaryPreferences().stream().map(DietaryPreference::getDisplayName).toList(),
+                mealPlan.getAllergens().stream().map(Allergen::getDisplayName).toList(),
+                mealPlan.getHealthConditionSuitabilities().stream().map(HealthConditionSuitability::getDisplayName).toList(),
+                new SimpleUserDTO(mealPlan.getOwner().getId(),mealPlan.getOwner().getUsername()),
+                mealPlan.isVerifiedByAdmin()
+        );
+        return dto;
+    }
+
+    private static Macronutrients copyMacros(Macronutrients source) {
+        if (source == null) return null;
+        Macronutrients copy = new Macronutrients();
+        copy.setCalories(source.getCalories());
+        copy.setSugar(source.getSugar());
+        copy.setSalt(source.getSalt());
+        copy.setFat(source.getFat());
+        copy.setProtein(source.getProtein());
+        return copy;
+    }
+
     private static void getMealPlanInfo(MealPlan mealPlan, MealPlanSummaryDTO dto) {
         dto.setId(mealPlan.getId());
         dto.setName(mealPlan.getName());
-        Macronutrients newMacronutrients = new Macronutrients();
-        newMacronutrients.setCalories(mealPlan.getMacronutrients().getCalories());
-        newMacronutrients.setSugar(mealPlan.getMacronutrients().getSugar());
-        newMacronutrients.setSalt(mealPlan.getMacronutrients().getSalt());
-        newMacronutrients.setFat(mealPlan.getMacronutrients().getFat());
-        newMacronutrients.setProtein(mealPlan.getMacronutrients().getProtein());
 
-        System.out.println("MealPlan macronutrients: " + mealPlan.getMacronutrients());
-        System.out.println("Calories in MealPlan: " + (mealPlan.getMacronutrients() != null ? mealPlan.getMacronutrients().getCalories() : "null"));
-
-
-        dto.setMacronutrients(newMacronutrients);
+        dto.setMacronutrients(copyMacros(mealPlan.getMacronutrients()));
         dto.setDietaryPreferences(mealPlan.getDietaryPreferences().stream().map(DietaryPreference::getDisplayName).toList());
         dto.setAllergens(mealPlan.getAllergens().stream().map(Allergen::getDisplayName).toList());
         dto.setHealthConditions(mealPlan.getHealthConditionSuitabilities().stream().map(HealthConditionSuitability::getDisplayName).toList());
@@ -65,19 +83,5 @@ public class MealPlanMapper {
         return dto;
     }
 
-    private static SimpleUserDTO toSimpleUserDTO(User user) {
-        if (user == null) return null;
-        SimpleUserDTO dto = new SimpleUserDTO();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        return dto;
-    }
 
-    private static MealShortDTO toMealShortDTO(Meal meal) {
-        if (meal == null) return null;
-        MealShortDTO dto = new MealShortDTO();
-        dto.setId(meal.getId());
-        dto.setName(meal.getName());
-        return dto;
-    }
 }

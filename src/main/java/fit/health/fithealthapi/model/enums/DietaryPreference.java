@@ -38,7 +38,7 @@ public enum DietaryPreference {
     @JsonCreator
     public static DietaryPreference fromString(String value) {
         for (DietaryPreference preference : DietaryPreference.values()) {
-            if (preference.getDisplayName().equalsIgnoreCase(value)) {
+            if (preference.getDisplayName().equalsIgnoreCase(value) || preference.name().equalsIgnoreCase(value)) {
                 return preference;
             }
         }

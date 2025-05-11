@@ -26,6 +26,7 @@ public class UserPreferenceService {
     private final FoodItemRepository foodItemRepository;
     private final MealPlanRepository mealPlanRepository;
     private final UserRepository userRepository;
+    private final MealComponentRepository mealComponentRepository;
 
     public UserPreference like(User user, UserItemType type, Long itemId) {
         return saveOrUpdate(user, type, itemId, PreferenceType.LIKE);

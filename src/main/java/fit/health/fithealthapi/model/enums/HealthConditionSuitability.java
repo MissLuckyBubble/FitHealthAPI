@@ -29,7 +29,7 @@ public enum HealthConditionSuitability {
     @JsonCreator
     public static HealthConditionSuitability fromString(String value) {
         for (HealthConditionSuitability suitability : HealthConditionSuitability.values()) {
-            if (suitability.getDisplayName().equalsIgnoreCase(value)) {
+            if (suitability.getDisplayName().equalsIgnoreCase(value) || suitability.name().equalsIgnoreCase(value)) {
                 return suitability;
             }
         }

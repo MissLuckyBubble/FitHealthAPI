@@ -73,6 +73,6 @@ public class MealComponentController {
     @Transactional
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id, Authentication authentication) {
-        return  ResponseEntity.ok(mealComponentRepository.findByIdWithItems(id));
+        return  ResponseEntity.ok(mealComponentRepository.findByIdFullyLoaded(id));
     }
 }
